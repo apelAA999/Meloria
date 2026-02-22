@@ -1,0 +1,2482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meloria — Music</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black: #0a0a0f;
+  --dark: #111118;
+  --card: #18181f;
+  --card2: #1e1e28;
+  --border: #2a2a38;
+  --purple: #7c3aed;
+  --purple-light: #a855f7;
+  --purple-glow: #9333ea;
+  --purple-dim: #4c1d95;
+  --text: #f1f0ff;
+  --text-muted: #8b8a9e;
+  --accent: #c084fc;
+  --green: #22c55e;
+  --red: #ef4444;
+  --gold: #f59e0b;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { 
+  font-family:'DM Sans',sans-serif; 
+  background:var(--black); 
+  color:var(--text); 
+  min-height:100vh;
+  overflow-x:hidden;
+}
+/* ====== SCROLLBAR ====== */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--dark)}
+::-webkit-scrollbar-thumb{background:var(--purple-dim);border-radius:2px}
+
+/* ====== UTILITY ====== */
+.hidden{display:none!important}
+.btn{
+  padding:10px 22px;border:none;border-radius:8px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;
+  transition:all .2s;
+}
+.btn-primary{background:var(--purple);color:#fff}
+.btn-primary:hover{background:var(--purple-light);box-shadow:0 0 20px rgba(124,58,237,.4)}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--purple);color:var(--text)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{opacity:.85}
+.btn-sm{padding:6px 14px;font-size:12px}
+input,select,textarea{
+  width:100%;padding:10px 14px;
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;
+  font-size:14px;outline:none;transition:border .2s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--purple)}
+label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
+.form-group{margin-bottom:16px}
+.error-msg{color:var(--red);font-size:12px;margin-top:4px}
+.success-msg{color:var(--green);font-size:12px;margin-top:4px}
+
+/* ====== PAGES ====== */
+.page{display:none;min-height:100vh}
+.page.active{display:block}
+
+/* ====== AUTH PAGES ====== */
+.auth-bg{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 30% 50%, rgba(124,58,237,.15) 0%, transparent 60%),
+             radial-gradient(ellipse at 70% 20%, rgba(168,85,247,.1) 0%, transparent 50%),
+             var(--black);
+  padding:20px;
+}
+.auth-box{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;padding:40px;width:100%;max-width:420px;
+  box-shadow:0 25px 60px rgba(0,0,0,.6);
+}
+.auth-logo{
+  font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
+  background:linear-gradient(135deg,var(--purple-light),var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-align:center;margin-bottom:8px;
+}
+.auth-subtitle{text-align:center;color:var(--text-muted);font-size:14px;margin-bottom:28px}
+.auth-tabs{display:flex;background:var(--dark);border-radius:8px;padding:3px;margin-bottom:24px}
+.auth-tab{
+  flex:1;padding:8px;text-align:center;border-radius:6px;cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--text-muted);transition:all .2s;
+}
+.auth-tab.active{background:var(--purple);color:#fff}
+.auth-divider{text-align:center;color:var(--text-muted);font-size:12px;margin:16px 0;position:relative}
+.auth-divider::before,.auth-divider::after{
+  content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--border);
+}
+.auth-divider::before{left:0}.auth-divider::after{right:0}
+.creator-note{
+  background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);
+  border-radius:8px;padding:12px;font-size:12px;color:var(--accent);
+  margin-top:12px;
+}
+
+/* ====== APP LAYOUT ====== */
+#app-page{
+  display:none;
+  flex-direction:column;
+  height:100vh;
+  overflow:hidden;
+}
+#app-page.active{display:flex}
+
+.app-header{
+  height:64px;background:rgba(17,17,24,.95);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:16px;
+  flex-shrink:0;z-index:100;
+}
+.header-logo{
+  font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+  background:linear-gradient(135deg,var(--purple-light),var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  white-space:nowrap;
+}
+.search-bar{
+  flex:1;max-width:400px;position:relative;
+}
+.search-bar input{
+  padding-left:38px;background:var(--card2);
+}
+.search-bar .search-icon{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  color:var(--text-muted);font-size:16px;pointer-events:none;
+}
+.header-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+.avatar-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--purple),var(--purple-light));
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#fff;
+  flex-shrink:0;
+}
+.verified-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  background:linear-gradient(135deg,#7c3aed,#a855f7);
+  color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600;
+}
+
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* ====== SIDEBAR ====== */
+.sidebar{
+  width:220px;flex-shrink:0;background:var(--dark);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow-y:auto;padding:16px 12px;
+  gap:4px;
+}
+.sidebar-section-title{
+  font-size:11px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--text-muted);padding:8px 8px 4px;margin-top:8px;
+}
+.sidebar-item{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;
+  border-radius:8px;cursor:pointer;color:var(--text-muted);
+  font-size:14px;font-weight:500;transition:all .2s;
+  text-decoration:none;
+}
+.sidebar-item:hover{background:var(--card);color:var(--text)}
+.sidebar-item.active{background:rgba(124,58,237,.2);color:var(--purple-light)}
+.sidebar-item .icon{font-size:18px;flex-shrink:0}
+.playlist-dot{
+  width:32px;height:32px;border-radius:6px;background:var(--purple-dim);
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;
+}
+
+/* ====== MAIN CONTENT ====== */
+.main-content{flex:1;overflow-y:auto;padding:24px}
+
+.section-title{
+  font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:20px;
+}
+.section-subtitle{
+  font-size:14px;color:var(--text-muted);margin-bottom:20px;
+}
+
+/* ====== MUSIC GRID ====== */
+.music-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;
+  margin-bottom:24px;
+}
+.music-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:14px;cursor:pointer;transition:all .25s;position:relative;
+  group:true;
+}
+.music-card:hover{border-color:var(--purple-dim);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.music-card-cover{
+  width:100%;aspect-ratio:1;border-radius:8px;object-fit:cover;
+  background:var(--card2);margin-bottom:12px;
+  display:flex;align-items:center;justify-content:center;font-size:40px;
+  position:relative;overflow:hidden;
+}
+.music-card-cover img{width:100%;height:100%;object-fit:cover;border-radius:8px}
+.music-card-cover-placeholder{
+  width:100%;aspect-ratio:1;border-radius:8px;
+  background:linear-gradient(135deg,var(--purple-dim),var(--dark));
+  display:flex;align-items:center;justify-content:center;font-size:36px;
+  margin-bottom:12px;
+}
+.play-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;
+  border-radius:8px;opacity:0;transition:opacity .2s;
+}
+.music-card:hover .play-overlay{opacity:1}
+.play-overlay-btn{
+  width:44px;height:44px;background:var(--purple);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  box-shadow:0 0 20px rgba(124,58,237,.5);
+}
+.music-card-title{font-weight:600;font-size:14px;margin-bottom:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.music-card-artist{font-size:12px;color:var(--text-muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.music-card-actions{
+  position:absolute;top:10px;right:10px;display:flex;gap:4px;
+  opacity:0;transition:opacity .2s;
+}
+.music-card:hover .music-card-actions{opacity:1}
+.icon-btn{
+  width:28px;height:28px;border-radius:6px;background:rgba(0,0,0,.6);
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:all .2s;color:#fff;
+}
+.icon-btn:hover{background:var(--purple)}
+.icon-btn.faved{color:var(--red)}
+
+/* ====== MUSIC LIST ====== */
+.music-list{display:flex;flex-direction:column;gap:4px}
+.music-row{
+  display:flex;align-items:center;gap:12px;padding:10px 14px;
+  border-radius:8px;cursor:pointer;transition:background .2s;
+}
+.music-row:hover{background:var(--card)}
+.music-row.playing{background:rgba(124,58,237,.15)}
+.music-row-num{width:20px;text-align:center;color:var(--text-muted);font-size:13px;flex-shrink:0}
+.music-row-thumb{
+  width:40px;height:40px;border-radius:6px;
+  background:var(--card2);flex-shrink:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.music-row-thumb img{width:100%;height:100%;object-fit:cover}
+.music-row-info{flex:1;min-width:0}
+.music-row-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-row-artist{font-size:12px;color:var(--text-muted)}
+.music-row-genre{
+  font-size:11px;background:rgba(124,58,237,.2);color:var(--accent);
+  padding:2px 8px;border-radius:10px;flex-shrink:0;
+}
+.music-row-actions{display:flex;gap:6px;flex-shrink:0;opacity:0;transition:opacity .2s}
+.music-row:hover .music-row-actions{opacity:1}
+
+/* ====== PLAYER BAR ====== */
+.player-bar{
+  height:80px;background:rgba(17,17,24,.98);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:20px;
+  flex-shrink:0;z-index:100;
+}
+.player-track{display:flex;align-items:center;gap:12px;width:240px;flex-shrink:0}
+.player-cover{
+  width:48px;height:48px;border-radius:8px;background:var(--card2);
+  flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px;
+}
+.player-cover img{width:100%;height:100%;object-fit:cover}
+.player-title{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player-artist{font-size:12px;color:var(--text-muted)}
+.player-fav-btn{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;transition:color .2s;flex-shrink:0}
+.player-fav-btn.faved{color:var(--red)}
+
+.player-controls{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;max-width:500px}
+.player-btns{display:flex;align-items:center;gap:16px}
+.ctrl-btn{
+  background:none;border:none;cursor:pointer;color:var(--text-muted);
+  font-size:20px;transition:all .2s;
+}
+.ctrl-btn:hover{color:var(--text)}
+.ctrl-btn.active{color:var(--purple-light)}
+.play-btn{
+  width:40px;height:40px;background:var(--purple);border-radius:50%;border:none;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:18px;transition:all .2s;box-shadow:0 0 16px rgba(124,58,237,.4);
+}
+.play-btn:hover{background:var(--purple-light);transform:scale(1.05)}
+.progress-bar-wrap{width:100%;display:flex;align-items:center;gap:8px}
+.time-label{font-size:11px;color:var(--text-muted);width:35px;text-align:center}
+.progress-bar{
+  flex:1;height:4px;background:var(--border);border-radius:2px;
+  cursor:pointer;position:relative;
+}
+.progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--purple),var(--accent));
+  border-radius:2px;transition:width .1s;position:relative;
+}
+.progress-fill::after{
+  content:'';position:absolute;right:-4px;top:-4px;
+  width:10px;height:10px;background:var(--accent);border-radius:50%;
+  opacity:0;transition:opacity .2s;
+}
+.progress-bar:hover .progress-fill::after{opacity:1}
+
+.player-right{display:flex;align-items:center;gap:10px;width:160px;justify-content:flex-end;flex-shrink:0}
+.vol-btn{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px}
+.vol-slider{width:80px;height:4px;-webkit-appearance:none;appearance:none;
+  background:var(--border);border-radius:2px;cursor:pointer;outline:none;}
+.vol-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:var(--purple-light);cursor:pointer;
+}
+
+/* ====== PLAYER EXPANDIDO ESTILO SPOTIFY ====== */
+.player-bar{cursor:pointer}
+.player-bar-inner{
+  display:flex;align-items:center;width:100%;gap:20px;
+  pointer-events:none;
+}
+.player-bar-inner *{pointer-events:auto}
+
+#nowPlayingScreen{
+  position:fixed;inset:0;z-index:500;
+  background:var(--black);
+  display:flex;flex-direction:column;
+  transform:translateY(100%);
+  transition:transform .4s cubic-bezier(.4,0,.2,1);
+}
+#nowPlayingScreen.open{transform:translateY(0)}
+
+.nps-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 24px 0;
+}
+.nps-chevron{
+  background:none;border:none;cursor:pointer;
+  color:var(--text-muted);font-size:28px;transition:color .2s;
+  line-height:1;
+}
+.nps-chevron:hover{color:var(--text)}
+.nps-queue-btn{
+  background:none;border:none;cursor:pointer;
+  color:var(--text-muted);font-size:22px;transition:color .2s;
+}
+.nps-queue-btn:hover{color:var(--text)}
+
+.nps-body{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:20px 32px;gap:0;
+  max-width:480px;margin:0 auto;width:100%;
+}
+
+.nps-cover{
+  width:min(280px, 70vw);height:min(280px, 70vw);
+  border-radius:16px;object-fit:cover;
+  background:linear-gradient(135deg,var(--purple-dim),var(--dark));
+  display:flex;align-items:center;justify-content:center;
+  font-size:80px;overflow:hidden;
+  box-shadow:0 32px 64px rgba(0,0,0,.6);
+  margin-bottom:32px;
+  transition:transform .3s;
+}
+.nps-cover.playing{transform:scale(1.03)}
+.nps-cover img{width:100%;height:100%;object-fit:cover;border-radius:16px}
+
+.nps-info{width:100%;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.nps-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nps-artist{font-size:15px;color:var(--text-muted);margin-top:2px}
+.nps-fav{background:none;border:none;cursor:pointer;font-size:26px;flex-shrink:0;
+  transition:transform .2s;}
+.nps-fav:hover{transform:scale(1.2)}
+
+.nps-progress{width:100%;margin-bottom:20px}
+.nps-progress-bar{
+  width:100%;height:5px;background:var(--border);border-radius:3px;
+  cursor:pointer;position:relative;margin-bottom:6px;
+}
+.nps-progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--purple),var(--accent));
+  border-radius:3px;transition:width .1s;position:relative;
+}
+.nps-progress-fill::after{
+  content:'';position:absolute;right:-6px;top:-4px;
+  width:13px;height:13px;background:#fff;border-radius:50%;
+  box-shadow:0 0 6px rgba(0,0,0,.4);
+  opacity:0;transition:opacity .2s;
+}
+.nps-progress-bar:hover .nps-progress-fill::after{opacity:1}
+.nps-times{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)}
+
+.nps-controls{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:24px}
+.nps-ctrl{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:26px;transition:all .2s}
+.nps-ctrl:hover{color:var(--text)}
+.nps-ctrl.active{color:var(--purple-light)}
+.nps-play{
+  width:64px;height:64px;background:white;border-radius:50%;border:none;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:26px;transition:all .2s;
+  box-shadow:0 8px 24px rgba(124,58,237,.4);color:#000;
+}
+.nps-play:hover{transform:scale(1.06);box-shadow:0 12px 32px rgba(124,58,237,.5)}
+
+.nps-extras{display:flex;align-items:center;justify-content:space-between;width:100%}
+.nps-vol{display:flex;align-items:center;gap:8px;flex:1}
+.nps-vol-icon{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px}
+.nps-vol-slider{
+  flex:1;height:4px;-webkit-appearance:none;appearance:none;
+  background:var(--border);border-radius:2px;cursor:pointer;outline:none;
+}
+.nps-vol-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--purple-light);cursor:pointer;
+}
+.nps-lyrics-btn{
+  background:none;border:none;cursor:pointer;
+  color:var(--text-muted);font-size:14px;font-weight:600;
+  padding:6px 14px;border-radius:20px;border:1px solid var(--border);
+  transition:all .2s;margin-left:12px;
+}
+.nps-lyrics-btn:hover,.nps-lyrics-btn.active{
+  border-color:var(--purple);color:var(--accent);background:rgba(124,58,237,.1);
+}
+
+/* Lyrics dentro do player expandido */
+.nps-lyrics-panel{
+  display:none;width:100%;max-height:180px;overflow-y:auto;
+  background:rgba(255,255,255,.04);border-radius:12px;padding:16px;
+  margin-top:16px;text-align:center;
+}
+.nps-lyrics-panel.open{display:block}
+.nps-lyrics-panel p{
+  font-size:15px;line-height:1.9;color:var(--text-muted);white-space:pre-wrap;
+}
+
+/* BG dinâmico */
+.nps-bg{
+  position:absolute;inset:0;z-index:-1;
+  background:radial-gradient(ellipse at 50% 0%, rgba(124,58,237,.35) 0%, transparent 70%),
+             var(--black);
+  transition:background .5s;
+}
+
+  width:260px;flex-shrink:0;background:var(--dark);border-left:1px solid var(--border);
+  padding:20px;overflow-y:auto;display:none;
+}
+.lyrics-panel.open{display:block}
+.lyrics-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:16px}
+.lyrics-text{font-size:14px;line-height:2;color:var(--text-muted);white-space:pre-wrap}
+
+/* ====== MODAL ====== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);
+  display:flex;align-items:center;justify-content:center;z-index:1000;
+  padding:20px;
+}
+.modal-overlay.hidden{display:none!important}
+.modal{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  width:100%;max-width:480px;max-height:80vh;overflow-y:auto;padding:28px;
+}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:22px}
+.modal-close:hover{color:var(--text)}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+
+/* ====== PLAYLIST VIEW ====== */
+.playlist-header{
+  display:flex;gap:24px;align-items:flex-end;margin-bottom:28px;
+  background:linear-gradient(180deg,rgba(124,58,237,.2),transparent);
+  padding:24px;border-radius:12px;
+}
+.playlist-cover-big{
+  width:140px;height:140px;border-radius:12px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--purple-dim),var(--dark));
+  display:flex;align-items:center;justify-content:center;font-size:56px;
+  overflow:hidden;
+}
+.playlist-cover-big img{width:100%;height:100%;object-fit:cover}
+.playlist-meta h1{font-family:'Syne',sans-serif;font-size:28px;font-weight:800}
+.playlist-meta p{color:var(--text-muted);font-size:14px;margin-top:6px}
+
+/* ====== ALBUM GRID ====== */
+.album-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:14px;cursor:pointer;transition:all .25s;
+}
+.album-card:hover{border-color:var(--purple-dim);transform:translateY(-2px)}
+.album-cover{
+  width:100%;aspect-ratio:1;border-radius:8px;margin-bottom:12px;
+  background:linear-gradient(135deg,var(--purple-dim),var(--dark));
+  display:flex;align-items:center;justify-content:center;font-size:40px;
+  overflow:hidden;
+}
+.album-cover img{width:100%;height:100%;object-fit:cover}
+
+/* ====== SEARCH RESULTS ====== */
+.search-results{margin-top:20px}
+.search-results-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;
+}
+
+/* ====== ADMIN PAGE ====== */
+#admin-page{display:none;min-height:100vh}
+#admin-page.active{display:flex}
+.admin-layout{display:flex;width:100%;min-height:100vh}
+.admin-sidebar{
+  width:220px;flex-shrink:0;background:var(--dark);border-right:1px solid var(--border);
+  padding:20px 12px;
+}
+.admin-logo{
+  font-family:'Syne',sans-serif;font-size:18px;font-weight:800;
+  color:var(--accent);padding:8px;margin-bottom:20px;
+}
+.admin-nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;
+  border-radius:8px;cursor:pointer;color:var(--text-muted);font-size:14px;
+  transition:all .2s;margin-bottom:2px;
+}
+.admin-nav-item:hover{background:var(--card);color:var(--text)}
+.admin-nav-item.active{background:rgba(124,58,237,.2);color:var(--purple-light)}
+.admin-content{flex:1;padding:30px;overflow-y:auto}
+.admin-section{display:none}
+.admin-section.active{display:block}
+.admin-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:20px}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:16px;
+}
+.stat-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--accent)}
+.stat-label{font-size:12px;color:var(--text-muted);margin-top:2px}
+.admin-table{width:100%;border-collapse:collapse}
+.admin-table th,.admin-table td{
+  padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:13px;
+}
+.admin-table th{color:var(--text-muted);font-weight:500}
+.admin-table tr:hover td{background:var(--card2)}
+.badge{
+  display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;
+}
+.badge-yellow{background:rgba(245,158,11,.2);color:var(--gold)}
+.badge-green{background:rgba(34,197,94,.2);color:var(--green)}
+.badge-red{background:rgba(239,68,68,.2);color:var(--red)}
+.badge-purple{background:rgba(124,58,237,.2);color:var(--accent)}
+
+/* ====== TOAST ====== */
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{
+  padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);animation:slideIn .3s ease;
+  max-width:300px;
+}
+.toast-success{background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.4);color:var(--green)}
+.toast-error{background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:var(--red)}
+.toast-info{background:rgba(124,58,237,.2);border:1px solid rgba(124,58,237,.4);color:var(--accent)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ====== UPLOAD PAGE ====== */
+.upload-zone{
+  border:2px dashed var(--border);border-radius:12px;padding:40px;
+  text-align:center;cursor:pointer;transition:all .2s;
+}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--purple);background:rgba(124,58,237,.05)}
+.upload-icon{font-size:48px;margin-bottom:12px}
+.upload-label{color:var(--text-muted);font-size:14px}
+
+/* ====== PROFILE MENU ====== */
+.profile-dropdown{
+  position:absolute;top:52px;right:20px;background:var(--card);
+  border:1px solid var(--border);border-radius:12px;padding:8px;
+  min-width:180px;z-index:200;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.profile-dropdown.hidden{display:none!important}
+.dropdown-item{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;
+  border-radius:8px;cursor:pointer;color:var(--text-muted);font-size:14px;
+  transition:background .2s;
+}
+.dropdown-item:hover{background:var(--card2);color:var(--text)}
+.dropdown-divider{height:1px;background:var(--border);margin:4px 0}
+
+/* ====== RESPONSIVE ====== */
+@media(max-width:768px){
+  .sidebar{width:0;overflow:hidden;position:fixed;z-index:50;height:calc(100vh - 64px - 80px)}
+  .sidebar.open{width:220px}
+  .player-track{width:160px}
+  .lyrics-panel{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ======== AUTH PAGE ======== -->
+<div id="auth-page" class="page auth-bg active">
+  <div class="auth-box">
+    <div class="auth-logo">🎵 Meloria</div>
+    <div class="auth-subtitle">Sua música, seu mundo</div>
+    <div class="auth-tabs" id="authTabs">
+      <div class="auth-tab active" onclick="switchAuthTab('login')">Entrar</div>
+      <div class="auth-tab" onclick="switchAuthTab('register')">Cadastrar</div>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label>Email ou nome de usuário</label>
+        <input type="text" id="loginEmail" placeholder="email@exemplo.com ou seunome">
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <div style="position:relative">
+          <input type="password" id="loginPassword" placeholder="••••••••" style="padding-right:44px">
+          <button type="button" onclick="toggleSenha('loginPassword','loginEyeBtn')" id="loginEyeBtn"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px">👁</button>
+        </div>
+      </div>
+      <div class="error-msg hidden" id="loginError"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="doLogin()">Entrar</button>
+      <div style="text-align:center;margin-top:12px">
+        <button class="btn btn-ghost btn-sm" style="border:none;color:var(--accent);font-size:13px;background:transparent;text-decoration:underline;cursor:pointer" id="adminLinkBtn">Área administrativa →</button>
+      </div>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="registerForm" class="hidden">
+      <div class="form-group">
+        <label>Nome de usuário</label>
+        <input type="text" id="regUsername" placeholder="seunome">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" placeholder="seu@email.com">
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <div style="position:relative">
+          <input type="password" id="regPassword" placeholder="••••••••" style="padding-right:44px">
+          <button type="button" onclick="toggleSenha('regPassword','regEyeBtn')" id="regEyeBtn"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Tipo de conta</label>
+        <select id="regType" onchange="toggleCreatorNote()">
+          <option value="listener">Ouvinte</option>
+          <option value="creator">Criador de Música</option>
+        </select>
+      </div>
+      <div id="creatorNote" class="creator-note hidden">
+        🎙️ Como criador, você poderá enviar músicas e álbuns para aprovação da equipe Meloria.
+      </div>
+      <div class="error-msg hidden" id="regError"></div>
+      <div class="success-msg hidden" id="regSuccess"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="doRegister()">Criar Conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== EMAIL CONFIRM PAGE ======== -->
+<div id="email-confirm-page" class="page auth-bg">
+  <div class="auth-box" style="text-align:center">
+    <div style="font-size:56px;margin-bottom:16px">📧</div>
+    <div class="auth-logo">Verifique seu Email</div>
+    <p style="color:var(--text-muted);font-size:14px;margin:12px 0 8px">
+      Enviamos um email de confirmação para:
+    </p>
+    <p style="color:var(--accent);font-weight:600;font-size:15px;margin-bottom:20px" id="confirmEmailDisplay"></p>
+
+    <div id="emailSendStatus" style="margin-bottom:16px;font-size:13px;color:var(--text-muted)">
+      Aguardando envio...
+    </div>
+
+    <!-- Caixa do código -->
+    <div id="codeInputArea">
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px">
+        Digite o código de 6 dígitos que você recebeu:
+      </p>
+      <input type="text" id="confirmCodeInput" maxlength="6" placeholder="000000"
+        style="text-align:center;font-size:24px;letter-spacing:8px;font-weight:700;padding:14px">
+      <div class="error-msg hidden" id="codeError" style="margin-top:8px"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:14px" onclick="verifyCode()">
+        ✓ Confirmar Conta
+      </button>
+    </div>
+
+    <!-- Fallback caso email não chegue -->
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:8px">Não recebeu o email?</p>
+      <button class="btn btn-ghost btn-sm" onclick="resendConfirmEmail()">↺ Reenviar Email</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="showPage('auth-page')">← Voltar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== ADMIN AUTH PAGE ======== -->
+<div id="admin-auth-page" class="page auth-bg">
+  <div class="auth-box">
+    <div class="auth-logo">🔐 Admin</div>
+    <div class="auth-subtitle">Acesso restrito — Meloria Admin</div>
+    <div class="form-group">
+      <label>Usuário</label>
+      <input type="text" id="adminUser" placeholder="usuário">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="adminPass" placeholder="••••••••">
+    </div>
+    <div class="error-msg hidden" id="adminLoginError"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="doAdminLogin()">Entrar</button>
+    <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:10px" onclick="showPage('auth-page')">← Voltar</button>
+  </div>
+</div>
+
+<!-- ======== APP PAGE ======== -->
+<div id="app-page" class="page">
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-logo">Meloria</div>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Pesquisar músicas, artistas..." 
+             id="searchInput" oninput="handleSearch(this.value)">
+    </div>
+    <div class="header-actions" style="position:relative">
+      <button class="icon-btn" onclick="toggleLyrics()" title="Letra" id="lyricsToggleBtn" style="font-size:16px">📝</button>
+      <div class="avatar-btn" onclick="toggleProfileMenu()" id="avatarBtn">?</div>
+      <div class="profile-dropdown hidden" id="profileDropdown">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);margin-bottom:4px">
+          <div style="font-weight:600;font-size:14px" id="profileName">—</div>
+          <div style="font-size:12px;color:var(--text-muted)" id="profileEmail">—</div>
+          <div id="profileBadge" style="margin-top:4px"></div>
+        </div>
+        <div class="dropdown-item" onclick="navTo('upload');closeMenu()">🎵 Enviar Música</div>
+        <div class="dropdown-item" id="menuUpload" onclick="navTo('upload');closeMenu()">📀 Enviar Álbum</div>
+        <div class="dropdown-divider"></div>
+        <div class="dropdown-item" onclick="doLogout()">🚪 Sair</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-item active" onclick="navTo('home')" id="nav-home">
+        <span class="icon">🏠</span> Início
+      </div>
+      <div class="sidebar-item" onclick="navTo('search')" id="nav-search">
+        <span class="icon">🔍</span> Pesquisar
+      </div>
+      <div class="sidebar-item" onclick="navTo('albums')" id="nav-albums">
+        <span class="icon">💿</span> Álbuns
+      </div>
+
+      <div class="sidebar-section-title">Sua Biblioteca</div>
+      <div class="sidebar-item" onclick="navTo('favorites')" id="nav-favorites">
+        <span class="icon">❤️</span> Favoritos
+      </div>
+      <div class="sidebar-item" onclick="navTo('playlists')" id="nav-playlists">
+        <span class="icon">📋</span> Playlists
+      </div>
+
+      <div class="sidebar-section-title">Playlists</div>
+      <div id="sidebarPlaylists"></div>
+      <div class="sidebar-item" onclick="openCreatePlaylist()" style="color:var(--purple-light)">
+        <span class="icon">➕</span> Nova Playlist
+      </div>
+
+      <div class="sidebar-section-title" id="creatorSection" style="display:none">Criador</div>
+      <div class="sidebar-item hidden" id="nav-upload" onclick="navTo('upload')">
+        <span class="icon">⬆️</span> Enviar Música
+      </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main-content" id="mainContent">
+      <!-- HOME -->
+      <div id="view-home">
+        <div class="section-title">Bem-vindo de volta! 👋</div>
+        <h3 style="font-size:16px;margin-bottom:14px;color:var(--text-muted)">Músicas em destaque</h3>
+        <div class="music-grid" id="homeGrid"></div>
+        <h3 style="font-size:16px;margin-bottom:14px;color:var(--text-muted)">Álbuns em destaque</h3>
+        <div class="music-grid" id="albumsPreview"></div>
+      </div>
+
+      <!-- SEARCH -->
+      <div id="view-search" class="hidden">
+        <div class="section-title">Pesquisar</div>
+        <div style="margin-bottom:20px">
+          <input type="text" id="searchInputBig" placeholder="Pesquise por músicas, artistas, gêneros..." 
+                 oninput="handleSearch(this.value);document.getElementById('searchInput').value=this.value"
+                 style="font-size:16px;padding:14px 18px">
+        </div>
+        <div id="searchResultsArea">
+          <div style="color:var(--text-muted);font-size:14px">Digite algo para buscar...</div>
+        </div>
+      </div>
+
+      <!-- ALBUMS -->
+      <div id="view-albums" class="hidden">
+        <div class="section-title">Álbuns</div>
+        <div class="music-grid" id="albumsGrid"></div>
+      </div>
+
+      <!-- ALBUM DETAIL -->
+      <div id="view-album-detail" class="hidden">
+        <div class="playlist-header" id="albumDetailHeader"></div>
+        <div class="music-list" id="albumDetailList"></div>
+      </div>
+
+      <!-- FAVORITES -->
+      <div id="view-favorites" class="hidden">
+        <div class="playlist-header">
+          <div class="playlist-cover-big">❤️</div>
+          <div class="playlist-meta">
+            <p style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)">Playlist</p>
+            <h1>Favoritos</h1>
+            <p id="favoritesCount">0 músicas</p>
+          </div>
+        </div>
+        <div class="music-list" id="favoritesList"></div>
+      </div>
+
+      <!-- PLAYLISTS -->
+      <div id="view-playlists" class="hidden">
+        <div class="section-title">Suas Playlists</div>
+        <div class="music-grid" id="playlistsGrid"></div>
+      </div>
+
+      <!-- PLAYLIST DETAIL -->
+      <div id="view-playlist-detail" class="hidden">
+        <div class="playlist-header" id="playlistDetailHeader"></div>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="btn btn-primary btn-sm" onclick="playAllPlaylist()">▶ Reproduzir</button>
+          <button class="btn btn-ghost btn-sm" onclick="openAddToPlaylist(currentPlaylistId)">➕ Adicionar Músicas</button>
+        </div>
+        <div class="music-list" id="playlistDetailList"></div>
+      </div>
+
+      <!-- UPLOAD -->
+      <div id="view-upload" class="hidden">
+        <div class="section-title">Enviar Conteúdo</div>
+        <div style="display:flex;gap:12px;margin-bottom:24px">
+          <button class="btn btn-primary" onclick="switchUploadTab('music')">🎵 Música</button>
+          <button class="btn btn-ghost" onclick="switchUploadTab('album')">📀 Álbum</button>
+        </div>
+
+        <!-- Upload Music -->
+        <div id="uploadMusic">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:500px">
+            <div class="form-group">
+              <label>Nome da Música *</label>
+              <input type="text" id="upTitle" placeholder="Nome da música">
+            </div>
+            <div class="form-group">
+              <label>Artista/Autor *</label>
+              <input type="text" id="upArtist" placeholder="Nome do artista">
+            </div>
+            <div class="form-group">
+              <label>Gênero Musical *</label>
+              <select id="upGenre">
+                <option value="">Selecione...</option>
+                <option>Pop</option><option>Rock</option><option>Hip-Hop</option>
+                <option>R&B</option><option>Electronic</option><option>Jazz</option>
+                <option>Clássico</option><option>Sertanejo</option><option>Funk</option>
+                <option>MPB</option><option>Indie</option><option>Metal</option>
+                <option>Reggae</option><option>Gospel</option><option>Outro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Capa da Música *</label>
+              <input type="file" id="upCover" accept="image/*">
+            </div>
+            <div class="form-group">
+              <label>Arquivo de Áudio (MP3, WAV, OGG)</label>
+              <input type="file" id="upAudio" accept="audio/*">
+            </div>
+            <div class="form-group">
+              <label>Letra (opcional)</label>
+              <textarea id="upLyrics" rows="6" placeholder="Cole aqui a letra da música..."></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="submitSong()">📤 Enviar para Aprovação</button>
+          </div>
+        </div>
+
+        <!-- Upload Album -->
+        <div id="uploadAlbum" class="hidden">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:500px">
+            <div class="form-group">
+              <label>Nome do Álbum *</label>
+              <input type="text" id="upAlbumTitle">
+            </div>
+            <div class="form-group">
+              <label>Artista *</label>
+              <input type="text" id="upAlbumArtist">
+            </div>
+            <div class="form-group">
+              <label>Gênero *</label>
+              <select id="upAlbumGenre">
+                <option value="">Selecione...</option>
+                <option>Pop</option><option>Rock</option><option>Hip-Hop</option>
+                <option>R&B</option><option>Electronic</option><option>Jazz</option>
+                <option>Sertanejo</option><option>Funk</option><option>MPB</option><option>Outro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Capa do Álbum *</label>
+              <input type="file" id="upAlbumCover" accept="image/*">
+            </div>
+            <div id="albumTracks">
+              <label style="margin-bottom:8px;display:block">Faixas</label>
+              <div id="albumTrackList"></div>
+              <button class="btn btn-ghost btn-sm" onclick="addAlbumTrack()" style="margin-top:8px">+ Adicionar Faixa</button>
+            </div>
+            <button class="btn btn-primary" style="margin-top:16px" onclick="submitAlbum()">📤 Enviar Álbum</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- LYRICS PANEL -->
+    <aside class="lyrics-panel" id="lyricsPanel">
+      <div class="lyrics-title">📝 Letra</div>
+      <div class="lyrics-text" id="lyricsText">Nenhuma música tocando ou letra não disponível.</div>
+    </aside>
+  </div>
+
+  <!-- NOW PLAYING SCREEN (Spotify style) -->
+  <div id="nowPlayingScreen">
+    <div class="nps-bg" id="npsBg"></div>
+    <div class="nps-header">
+      <button class="nps-chevron" onclick="closeNowPlaying()">⌄</button>
+      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text-muted);letter-spacing:.05em">TOCANDO AGORA</div>
+      <button class="nps-queue-btn" onclick="closeNowPlaying()">☰</button>
+    </div>
+    <div class="nps-body">
+      <div class="nps-cover" id="npsCover">🎵</div>
+      <div class="nps-info">
+        <div>
+          <div class="nps-title" id="npsTitle">—</div>
+          <div class="nps-artist" id="npsArtist">—</div>
+        </div>
+        <button class="nps-fav" id="npsFavBtn" onclick="toggleCurrentFav()">🤍</button>
+      </div>
+      <div class="nps-progress">
+        <div class="nps-progress-bar" id="npsProgressBar" onclick="seekTo(event)">
+          <div class="nps-progress-fill" id="npsProgressFill" style="width:0%"></div>
+        </div>
+        <div class="nps-times">
+          <span id="npsCurrentTime">0:00</span>
+          <span id="npsTotalTime">0:00</span>
+        </div>
+      </div>
+      <div class="nps-controls">
+        <button class="nps-ctrl" id="npsShuffleBtn" onclick="toggleShuffle()">🔀</button>
+        <button class="nps-ctrl" onclick="prevSong()">⏮</button>
+        <button class="nps-play" id="npsPlayBtn" onclick="togglePlay()">▶</button>
+        <button class="nps-ctrl" onclick="nextSong()">⏭</button>
+        <button class="nps-ctrl" id="npsRepeatBtn" onclick="toggleRepeat()">🔁</button>
+      </div>
+      <div class="nps-extras">
+        <div class="nps-vol">
+          <button class="nps-vol-icon" onclick="toggleMute()">🔊</button>
+          <input type="range" class="nps-vol-slider" id="npsVolSlider" min="0" max="100" value="80" oninput="setVolume(this.value);document.getElementById('volSlider').value=this.value">
+        </div>
+        <button class="nps-lyrics-btn" id="npsLyricsBtn" onclick="toggleNpsLyrics()">📝 Letra</button>
+      </div>
+      <div class="nps-lyrics-panel" id="npsLyricsPanel">
+        <p id="npsLyricsText">Letra não disponível.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYER BAR -->
+  <div class="player-bar" id="playerBar" onclick="openNowPlaying(event)">
+    <div class="player-track">
+      <div class="player-cover" id="playerCover">🎵</div>
+      <div style="min-width:0">
+        <div class="player-title" id="playerTitle">Toque uma música</div>
+        <div class="player-artist" id="playerArtist">—</div>
+      </div>
+      <button class="player-fav-btn" id="playerFavBtn" onclick="event.stopPropagation();toggleCurrentFav()">🤍</button>
+    </div>
+    <div class="player-controls" onclick="event.stopPropagation()">
+      <div class="player-btns">
+        <button class="ctrl-btn" id="shuffleBtn" onclick="toggleShuffle()">🔀</button>
+        <button class="ctrl-btn" onclick="prevSong()">⏮</button>
+        <button class="play-btn" id="playPauseBtn" onclick="togglePlay()">▶</button>
+        <button class="ctrl-btn" onclick="nextSong()">⏭</button>
+        <button class="ctrl-btn" id="repeatBtn" onclick="toggleRepeat()">🔁</button>
+      </div>
+      <div class="progress-bar-wrap">
+        <span class="time-label" id="currentTime">0:00</span>
+        <div class="progress-bar" id="progressBar" onclick="seekTo(event)">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <span class="time-label" id="totalTime">0:00</span>
+      </div>
+    </div>
+    <div class="player-right" onclick="event.stopPropagation()">
+      <button class="icon-btn" onclick="toggleLyrics()" title="Letra" id="lyricsToggleBtn" style="font-size:16px">📝</button>
+      <button class="vol-btn" onclick="toggleMute()">🔊</button>
+      <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="80" oninput="setVolume(this.value);document.getElementById('npsVolSlider').value=this.value">
+    </div>
+  </div>
+</div>
+
+<!-- ======== ADMIN PAGE ======== -->
+<div id="admin-page" class="page">
+  <div class="admin-layout">
+    <nav class="admin-sidebar">
+      <div class="admin-logo">⚙️ Admin</div>
+      <div class="admin-nav-item active" onclick="adminNav('dashboard')">📊 Dashboard</div>
+      <div class="admin-nav-item" onclick="adminNav('songs')">🎵 Músicas</div>
+      <div class="admin-nav-item" onclick="adminNav('albums')">💿 Álbuns</div>
+      <div class="admin-nav-item" onclick="adminNav('pending')">⏳ Pendentes</div>
+      <div class="admin-nav-item" onclick="adminNav('users')">👥 Usuários</div>
+      <div class="admin-nav-item" onclick="adminNav('creators')">🎙️ Criadores</div>
+      <div style="margin-top:auto;padding-top:20px">
+        <div class="admin-nav-item" onclick="doAdminLogout()">🚪 Sair</div>
+      </div>
+    </nav>
+    <div class="admin-content">
+      <!-- DASHBOARD -->
+      <div id="admin-dashboard" class="admin-section active">
+        <div class="admin-title">Dashboard</div>
+        <div class="stat-cards" id="adminStats"></div>
+        <h3 style="font-size:16px;margin-bottom:12px">Últimas músicas publicadas</h3>
+        <div id="adminLastSongs"></div>
+      </div>
+
+      <!-- SONGS -->
+      <div id="admin-songs" class="admin-section">
+        <div class="admin-title">Gerenciar Músicas</div>
+        <div style="margin-bottom:16px;display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="openAdminAddSong()">+ Adicionar Música</button>
+        </div>
+        <table class="admin-table" id="adminSongsTable">
+          <thead><tr><th>Capa</th><th>Título</th><th>Artista</th><th>Gênero</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="adminSongsBody"></tbody>
+        </table>
+      </div>
+
+      <!-- ALBUMS -->
+      <div id="admin-albums" class="admin-section">
+        <div class="admin-title">Gerenciar Álbuns</div>
+        <button class="btn btn-primary" style="margin-bottom:16px" onclick="openAdminAddAlbum()">+ Adicionar Álbum</button>
+        <table class="admin-table">
+          <thead><tr><th>Título</th><th>Artista</th><th>Faixas</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="adminAlbumsBody"></tbody>
+        </table>
+      </div>
+
+      <!-- PENDING -->
+      <div id="admin-pending" class="admin-section">
+        <div class="admin-title">Conteúdo Pendente</div>
+        <h3 style="font-size:15px;margin-bottom:12px;color:var(--text-muted)">Músicas aguardando aprovação</h3>
+        <table class="admin-table" id="pendingSongsTable">
+          <thead><tr><th>Título</th><th>Artista</th><th>Criador</th><th>Gênero</th><th>Ações</th></tr></thead>
+          <tbody id="pendingSongsBody"></tbody>
+        </table>
+        <h3 style="font-size:15px;margin:20px 0 12px;color:var(--text-muted)">Álbuns aguardando aprovação</h3>
+        <table class="admin-table">
+          <thead><tr><th>Título</th><th>Artista</th><th>Criador</th><th>Ações</th></tr></thead>
+          <tbody id="pendingAlbumsBody"></tbody>
+        </table>
+      </div>
+
+      <!-- USERS -->
+      <div id="admin-users" class="admin-section">
+        <div class="admin-title">Usuários</div>
+        <table class="admin-table">
+          <thead><tr><th>Nome</th><th>Email</th><th>Tipo</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="adminUsersBody"></tbody>
+        </table>
+      </div>
+
+      <!-- CREATORS -->
+      <div id="admin-creators" class="admin-section">
+        <div class="admin-title">Criadores de Música</div>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">
+          Criadores autorizados têm selo ✅ e suas músicas são publicadas automaticamente.
+        </p>
+        <table class="admin-table">
+          <thead><tr><th>Nome</th><th>Email</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="adminCreatorsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== MODALS ======== -->
+
+<!-- Create Playlist -->
+<div class="modal-overlay hidden" id="modalCreatePlaylist">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nova Playlist</div>
+      <button class="modal-close" onclick="closeModal('modalCreatePlaylist')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Nome da Playlist</label>
+      <input type="text" id="newPlaylistName" placeholder="Ex: Minhas favoritas">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalCreatePlaylist')">Cancelar</button>
+      <button class="btn btn-primary" onclick="createPlaylist()">Criar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add to Playlist -->
+<div class="modal-overlay hidden" id="modalAddToPlaylist">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Adicionar à Playlist</div>
+      <button class="modal-close" onclick="closeModal('modalAddToPlaylist')">✕</button>
+    </div>
+    <div id="addToPlaylistList" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- Admin Add Song -->
+<div class="modal-overlay hidden" id="modalAdminSong">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header">
+      <div class="modal-title">Adicionar Música</div>
+      <button class="modal-close" onclick="closeModal('modalAdminSong')">✕</button>
+    </div>
+    <div class="form-group"><label>Título *</label><input type="text" id="adminSongTitle"></div>
+    <div class="form-group"><label>Artista *</label><input type="text" id="adminSongArtist"></div>
+    <div class="form-group">
+      <label>Gênero *</label>
+      <select id="adminSongGenre">
+        <option value="">Selecione...</option>
+        <option>Pop</option><option>Rock</option><option>Hip-Hop</option>
+        <option>R&B</option><option>Electronic</option><option>Jazz</option>
+        <option>Sertanejo</option><option>Funk</option><option>MPB</option>
+        <option>Indie</option><option>Metal</option><option>Reggae</option>
+        <option>Gospel</option><option>Clássico</option><option>Outro</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Capa (imagem)</label><input type="file" id="adminSongCover" accept="image/*"></div>
+    <div class="form-group"><label>Arquivo de Áudio</label><input type="file" id="adminSongAudio" accept="audio/*"></div>
+    <div class="form-group"><label>Letra (opcional)</label><textarea id="adminSongLyrics" rows="5"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalAdminSong')">Cancelar</button>
+      <button class="btn btn-primary" onclick="adminAddSong()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Add Album -->
+<div class="modal-overlay hidden" id="modalAdminAlbum">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header">
+      <div class="modal-title">Adicionar Álbum</div>
+      <button class="modal-close" onclick="closeModal('modalAdminAlbum')">✕</button>
+    </div>
+    <div class="form-group"><label>Título do Álbum *</label><input type="text" id="adminAlbumTitle"></div>
+    <div class="form-group"><label>Artista *</label><input type="text" id="adminAlbumArtist"></div>
+    <div class="form-group">
+      <label>Gênero *</label>
+      <select id="adminAlbumGenre">
+        <option value="">Selecione...</option>
+        <option>Pop</option><option>Rock</option><option>Hip-Hop</option>
+        <option>R&B</option><option>Electronic</option><option>Sertanejo</option>
+        <option>Funk</option><option>MPB</option><option>Outro</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Capa</label><input type="file" id="adminAlbumCover" accept="image/*"></div>
+    <div>
+      <label style="margin-bottom:8px;display:block">Músicas do Álbum</label>
+      <div id="adminAlbumTrackList"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addAdminAlbumTrack()" style="margin-top:8px">+ Adicionar Faixa</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalAdminAlbum')">Cancelar</button>
+      <button class="btn btn-primary" onclick="adminAddAlbum()">Publicar Álbum</button>
+    </div>
+  </div>
+</div>
+
+<!-- Song Context Menu -->
+<div class="modal-overlay hidden" id="modalSongMenu">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-header">
+      <div class="modal-title" id="songMenuTitle">Opções</div>
+      <button class="modal-close" onclick="closeModal('modalSongMenu')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px" id="songMenuOptions"></div>
+  </div>
+</div>
+
+<audio id="audioPlayer"></audio>
+
+<script type="module">
+// =================== FIREBASE CONFIG ===================
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getFirestore, collection, doc,
+  getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc,
+  query, where, orderBy
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBGsZ0D7bKL4n6EBWXDqyRfyRyaxj4j6ds",
+  authDomain: "meloria-19307.firebaseapp.com",
+  projectId: "meloria-19307",
+  storageBucket: "meloria-19307.firebasestorage.app",
+  messagingSenderId: "1049159562324",
+  appId: "1:1049159562324:web:8a4fc60f838471615a69c1"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// =================== DB HELPERS ===================
+// Cache local para evitar múltiplas leituras
+let _cache = { users:null, songs:null, albums:null, pending_songs:null, pending_albums:null };
+
+async function getCol(name){
+  const snap = await getDocs(collection(db, name));
+  return snap.docs.map(d => ({id: d.id, ...d.data()}));
+}
+
+async function getDB(){
+  const [users, songs, albums, pending_songs, pending_albums] = await Promise.all([
+    getCol('users'), getCol('songs'), getCol('albums'),
+    getCol('pending_songs'), getCol('pending_albums')
+  ]);
+  return { users, songs, albums, pending_songs, pending_albums };
+}
+
+async function saveDoc(colName, id, data){
+  await setDoc(doc(db, colName, id), data, {merge: true});
+}
+async function deleteFireDoc(colName, id){
+  await deleteDoc(doc(db, colName, id));
+}
+
+// Compatibilidade com código existente
+async function saveUsers(arr){ for(const u of arr) await saveDoc('users', u.id, u); }
+async function saveSongs(arr){ for(const s of arr) await saveDoc('songs', s.id, s); }
+async function saveAlbums(arr){ for(const a of arr) await saveDoc('albums', a.id, a); }
+async function savePendingSongs(arr){
+  // Limpa coleção e resalva
+  const old = await getCol('pending_songs');
+  for(const o of old) await deleteFireDoc('pending_songs', o.id);
+  for(const s of arr) await saveDoc('pending_songs', s.id, s);
+}
+async function savePendingAlbums(arr){
+  const old = await getCol('pending_albums');
+  for(const o of old) await deleteFireDoc('pending_albums', o.id);
+  for(const a of arr) await saveDoc('pending_albums', a.id, a);
+}
+
+async function getUserData(uid){
+  const snap = await getDoc(doc(db, 'user_data', uid));
+  if(snap.exists()) return snap.data();
+  return { favorites: [], playlists: [] };
+}
+async function saveUserData(uid, data){
+  await setDoc(doc(db, 'user_data', uid), data);
+}
+
+// Expõe globalmente para o resto do código
+window.getDB = getDB;
+window.saveUsers = saveUsers;
+window.saveSongs = saveSongs;
+window.saveAlbums = saveAlbums;
+window.savePendingSongs = savePendingSongs;
+window.savePendingAlbums = savePendingAlbums;
+window.getUserData = getUserData;
+window.saveUserData = saveUserData;
+window.saveDoc = saveDoc;
+window.deleteFireDoc = deleteFireDoc;
+
+// =================== INIT FIREBASE ===================
+window._fbReady = true;
+console.log('[Meloria] Firebase conectado ✅');
+</script>
+
+<script>
+// =================== APP VARS ===================
+let currentSong = null;
+let songQueue = [];
+let queueIdx = 0;
+let shuffle = false;
+let repeat = false;
+let lyricsOpen = false;
+let currentPlaylistId = null;
+
+// =================== NOW PLAYING SCREEN ===================
+function openNowPlaying(e){
+  if(!currentSong) return;
+  document.getElementById('nowPlayingScreen').classList.add('open');
+}
+function closeNowPlaying(){
+  document.getElementById('nowPlayingScreen').classList.remove('open');
+}
+function toggleNpsLyrics(){
+  const panel = document.getElementById('npsLyricsPanel');
+  const btn = document.getElementById('npsLyricsBtn');
+  panel.classList.toggle('open');
+  btn.classList.toggle('active');
+}
+function updateNowPlayingUI(){
+  if(!currentSong) return;
+  // Cover
+  const coverHtml = currentSong.coverUrl
+    ? `<img src="${currentSong.coverUrl}">`
+    : '🎵';
+  document.getElementById('npsCover').innerHTML = coverHtml;
+  // Info
+  document.getElementById('npsTitle').textContent = currentSong.title;
+  document.getElementById('npsArtist').textContent = currentSong.artist;
+  // Lyrics
+  const lyrics = currentSong.lyrics || 'Letra não disponível para esta música.';
+  document.getElementById('npsLyricsText').textContent = lyrics;
+  document.getElementById('lyricsText').textContent = lyrics;
+  // Fav
+  updatePlayerFavBtn();
+}
+
+// =================== AUDIO ===================
+const audio = document.getElementById('audioPlayer');
+
+audio.ontimeupdate = () => {
+  if(!audio.duration) return;
+  const pct = (audio.currentTime/audio.duration)*100;
+  // Mini player bar
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('currentTime').textContent = fmtTime(audio.currentTime);
+  // NPS
+  document.getElementById('npsProgressFill').style.width = pct+'%';
+  document.getElementById('npsCurrentTime').textContent = fmtTime(audio.currentTime);
+};
+audio.onloadedmetadata = () => {
+  document.getElementById('totalTime').textContent = fmtTime(audio.duration);
+  document.getElementById('npsTotalTime').textContent = fmtTime(audio.duration);
+};
+audio.onended = () => {
+  if(repeat){ audio.play(); return; }
+  nextSong();
+};
+audio.onplay = () => {
+  document.getElementById('playPauseBtn').textContent='⏸';
+  document.getElementById('npsPlayBtn').textContent='⏸';
+  document.getElementById('npsCover').classList.add('playing');
+};
+audio.onpause = () => {
+  document.getElementById('playPauseBtn').textContent='▶';
+  document.getElementById('npsPlayBtn').textContent='▶';
+  document.getElementById('npsCover').classList.remove('playing');
+};
+
+function fmtTime(s){
+  const m=Math.floor(s/60), sec=Math.floor(s%60);
+  return m+':'+(sec<10?'0':'')+sec;
+}
+function togglePlay(){
+  if(!currentSong){ toast('Selecione uma música!','error'); return; }
+  if(audio.paused){ audio.play(); document.getElementById('playPauseBtn').textContent='⏸'; }
+  else{ audio.pause(); document.getElementById('playPauseBtn').textContent='▶'; }
+}
+function nextSong(){
+  if(!songQueue.length) return;
+  if(shuffle){ queueIdx=Math.floor(Math.random()*songQueue.length); }
+  else{ queueIdx=(queueIdx+1)%songQueue.length; }
+  playSong(songQueue[queueIdx], false);
+}
+function prevSong(){
+  if(!songQueue.length) return;
+  queueIdx=(queueIdx-1+songQueue.length)%songQueue.length;
+  playSong(songQueue[queueIdx], false);
+}
+function toggleShuffle(){
+  shuffle=!shuffle;
+  document.getElementById('shuffleBtn').classList.toggle('active',shuffle);
+  document.getElementById('npsShuffleBtn').classList.toggle('active',shuffle);
+}
+function toggleRepeat(){
+  repeat=!repeat;
+  document.getElementById('repeatBtn').classList.toggle('active',repeat);
+  document.getElementById('npsRepeatBtn').classList.toggle('active',repeat);
+}
+function seekTo(e){
+  if(!currentSong||!audio.duration) return;
+  // Funciona para o mini player e o NPS
+  const bar = e.currentTarget;
+  const r = bar.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  audio.currentTime = pct * audio.duration;
+}
+function setVolume(v){ audio.volume=v/100; }
+function toggleMute(){ audio.muted=!audio.muted; }
+
+function playSong(song, resetQueue=true){
+  if(resetQueue){ songQueue=[song]; queueIdx=0; }
+  currentSong=song;
+  if(song.audioUrl){ audio.src=song.audioUrl; audio.play(); }
+  else { audio.src=''; }
+
+  // Mini player bar
+  const coverEl = document.getElementById('playerCover');
+  if(song.coverUrl){ coverEl.innerHTML=`<img src="${song.coverUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`; }
+  else{ coverEl.textContent='🎵'; }
+  document.getElementById('playerTitle').textContent = song.title;
+  document.getElementById('playerArtist').textContent = song.artist;
+
+  // NPS screen
+  updateNowPlayingUI();
+}
+
+function playAll(songs){
+  if(!songs.length) return;
+  songQueue=[...songs];
+  queueIdx=0;
+  playSong(songs[0], false);
+}
+
+// =================== PAGES ===================
+function showPage(id){
+  // Esconde tudo
+  ['auth-page','email-confirm-page','admin-auth-page','app-page','admin-page'].forEach(pid => {
+    const el = document.getElementById(pid);
+    if(!el) return;
+    el.style.display = 'none';
+    el.classList.remove('active');
+  });
+  // Mostra só o pedido
+  const pg = document.getElementById(id);
+  if(!pg) return;
+  if(id === 'app-page' || id === 'admin-page'){
+    pg.style.display = 'flex';
+  } else {
+    pg.style.display = 'block';
+  }
+  pg.classList.add('active');
+}
+
+// =================== AUTH ===================
+let pendingRegEmail = '';
+let pendingRegData = null;
+let pendingConfirmCode = '';
+
+// EmailJS config — usando serviço público de demo
+// Para produção: configure sua conta em emailjs.com
+const EMAILJS_SERVICE = 'service_t66b14q';
+const EMAILJS_TEMPLATE = 'template_etkebum';
+const EMAILJS_PUBLIC_KEY = 'KLixTPe6ydz9ViZuM';
+
+function switchAuthTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>{
+    t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register'));
+  });
+  document.getElementById('loginForm').classList.toggle('hidden', tab!=='login');
+  document.getElementById('registerForm').classList.toggle('hidden', tab!=='register');
+}
+
+function toggleCreatorNote(){
+  const v=document.getElementById('regType').value;
+  document.getElementById('creatorNote').classList.toggle('hidden', v!=='creator');
+}
+
+async function doLogin(){
+  const identifier = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  if(!identifier||!pass){ showError('loginError','Preencha todos os campos.'); return; }
+  showError('loginError','⏳ Verificando...');
+  document.getElementById('loginError').style.color='var(--text-muted)';
+  document.getElementById('loginError').classList.remove('hidden');
+  try {
+    const db = await getDB();
+    const user = db.users.find(u =>
+      (u.email === identifier || u.username === identifier) && u.password === pass
+    );
+    if(!user){ showError('loginError','Email/usuário ou senha incorretos.'); return; }
+    if(!user.confirmed){
+      const errEl = document.getElementById('loginError');
+      errEl.innerHTML = '⚠️ Email não confirmado. <button onclick="reenviarParaEmail(\''+user.email+'\',\''+user.username+'\')" style="color:var(--accent);background:none;border:none;cursor:pointer;text-decoration:underline;font-size:12px">Reenviar código</button>';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    currentUser = user;
+    loadApp();
+  } catch(e){
+    showError('loginError','Erro de conexão. Tente novamente.');
+    console.error(e);
+  }
+}
+
+function reenviarParaEmail(email, username){
+  pendingRegEmail = email;
+  pendingConfirmCode = generateCode();
+  document.getElementById('confirmEmailDisplay').textContent = email;
+  document.getElementById('confirmCodeInput').value = '';
+  document.getElementById('emailSendStatus').textContent = '📤 Enviando código...';
+  showPage('email-confirm-page');
+  emailjs.init(EMAILJS_PUBLIC_KEY);
+  emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+    to_email: email, to_name: username,
+    confirm_code: pendingConfirmCode, app_name: 'Meloria'
+  }, EMAILJS_PUBLIC_KEY).then(()=>{
+    document.getElementById('emailSendStatus').textContent = '✅ Código enviado!';
+    document.getElementById('emailSendStatus').style.color = 'var(--green)';
+  }).catch(()=>{
+    document.getElementById('emailSendStatus').innerHTML =
+      `<span style="color:var(--gold)">Código de teste: <strong style="color:var(--accent);font-size:20px;letter-spacing:4px">${pendingConfirmCode}</strong></span>`;
+  });
+}
+
+function generateCode(){
+  return Math.floor(100000+Math.random()*900000).toString();
+}
+
+async function sendConfirmEmail(email, username, code){
+  const statusEl = document.getElementById('emailSendStatus');
+  statusEl.textContent = '📤 Enviando email...';
+  statusEl.style.color = 'var(--text-muted)';
+
+  try {
+    // Tenta EmailJS
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+      to_email: email,
+      to_name: username,
+      confirm_code: code,
+      app_name: 'Meloria'
+    }, EMAILJS_PUBLIC_KEY);
+
+    statusEl.textContent = '✅ Email enviado! Verifique sua caixa de entrada (e spam).';
+    statusEl.style.color = 'var(--green)';
+    document.getElementById('codeInputArea').style.display = 'block';
+  } catch(err) {
+    // EmailJS não configurado — mostra código na tela como fallback para demo
+    console.warn('EmailJS não configurado. Modo demo ativo. Código:', code);
+    statusEl.innerHTML = `
+      <div style="background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.4);border-radius:10px;padding:14px;margin:0 auto;max-width:280px">
+        <div style="color:var(--accent);font-weight:600;margin-bottom:6px">⚠️ Modo Demo</div>
+        <div style="color:var(--text-muted);font-size:12px;margin-bottom:10px">
+          Email não enviado (EmailJS não configurado).<br>Use o código abaixo para continuar:
+        </div>
+        <div style="font-size:28px;font-weight:800;letter-spacing:8px;color:var(--text);font-family:'Syne',sans-serif">${code}</div>
+      </div>`;
+    document.getElementById('codeInputArea').style.display = 'block';
+  }
+}
+
+async function doRegister(){
+  const username = document.getElementById('regUsername').value.trim();
+  const email    = document.getElementById('regEmail').value.trim();
+  const pass     = document.getElementById('regPassword').value;
+  const type     = document.getElementById('regType').value;
+
+  if(!username||!email||!pass){ showError('regError','Preencha todos os campos.'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showError('regError','Email inválido.'); return; }
+  if(pass.length<6){ showError('regError','Senha deve ter pelo menos 6 caracteres.'); return; }
+
+  showError('regError','⏳ Criando conta...');
+  document.getElementById('regError').style.color='var(--text-muted)';
+  document.getElementById('regError').classList.remove('hidden');
+
+  try {
+    const db = await getDB();
+    if(db.users.find(u=>u.email===email)){ showError('regError','Email já cadastrado.'); return; }
+    if(db.users.find(u=>u.username===username)){ showError('regError','Nome de usuário já em uso.'); return; }
+
+    pendingConfirmCode = generateCode();
+    pendingRegEmail    = email;
+    pendingRegData     = {
+      id: 'user_'+Date.now(),
+      username, email, password: pass,
+      type, confirmed: false,
+      isVerifiedCreator: false,
+      createdAt: Date.now()
+    };
+
+    // Salva no Firebase
+    await saveDoc('users', pendingRegData.id, pendingRegData);
+
+    // Mostra tela de confirmação
+    document.getElementById('confirmEmailDisplay').textContent = email;
+    document.getElementById('confirmCodeInput').value = '';
+    document.getElementById('emailSendStatus').textContent = '📤 Enviando código para seu email...';
+    document.getElementById('emailSendStatus').style.color = 'var(--text-muted)';
+    showPage('email-confirm-page');
+
+    // Envia email
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+      to_email: email, to_name: username,
+      confirm_code: pendingConfirmCode, app_name: 'Meloria'
+    }, EMAILJS_PUBLIC_KEY).then(()=>{
+      document.getElementById('emailSendStatus').textContent = '✅ Email enviado! Verifique sua caixa de entrada.';
+      document.getElementById('emailSendStatus').style.color = 'var(--green)';
+    }).catch(err=>{
+      document.getElementById('emailSendStatus').innerHTML =
+        `<span style="color:var(--gold)">⚠️ Código de teste: <strong style="color:var(--accent);font-size:18px;letter-spacing:4px">${pendingConfirmCode}</strong></span>`;
+    });
+  } catch(e){
+    showError('regError','Erro ao criar conta. Tente novamente.');
+    console.error(e);
+  }
+}
+
+async function verifyCode(){
+  const input = document.getElementById('confirmCodeInput').value.trim();
+  if(input !== pendingConfirmCode){
+    showError('codeError','Código incorreto. Tente novamente.');
+    document.getElementById('confirmCodeInput').style.borderColor='var(--red)';
+    return;
+  }
+  try {
+    await saveDoc('users', pendingRegData.id, {...pendingRegData, confirmed: true});
+    currentUser = {...pendingRegData, confirmed: true};
+    toast('Email confirmado! Bem-vindo à Meloria! 🎉','success');
+    loadApp();
+  } catch(e){
+    showError('codeError','Erro ao confirmar. Tente novamente.');
+  }
+}
+
+function resendConfirmEmail(){
+  if(!pendingRegEmail){ showPage('auth-page'); return; }
+  pendingConfirmCode = generateCode();
+  document.getElementById('confirmCodeInput').value='';
+  document.getElementById('confirmCodeInput').style.borderColor='';
+  const db=getDB();
+  const u=db.users.find(x=>x.email===pendingRegEmail);
+  sendConfirmEmail(pendingRegEmail, u?u.username:'usuário', pendingConfirmCode);
+  toast('Novo código gerado e enviado!','info');
+}
+
+function confirmEmail(){ verifyCode(); } // backward compat
+
+function doLogout(){ currentUser=null; audio.pause(); audio.src=''; currentSong=null; showPage('auth-page'); }
+
+// =================== APP INIT ===================
+function loadApp(){
+  showPage('app-page');
+  const ini=currentUser.username.charAt(0).toUpperCase();
+  document.getElementById('avatarBtn').textContent=ini;
+  document.getElementById('profileName').textContent=currentUser.username;
+  document.getElementById('profileEmail').textContent=currentUser.email;
+  
+  const badge=document.getElementById('profileBadge');
+  if(currentUser.type==='creator'){
+    badge.innerHTML=currentUser.isVerifiedCreator
+      ?'<span class="verified-badge">✅ Criador Verificado</span>'
+      :'<span class="badge badge-purple">🎙️ Criador</span>';
+  } else { badge.innerHTML=''; }
+  
+  // Show/hide creator nav
+  const creatorSection=document.getElementById('creatorSection');
+  const navUpload=document.getElementById('nav-upload');
+  if(currentUser.type==='creator'){ creatorSection.style.display=''; navUpload.classList.remove('hidden'); }
+  
+  renderHome();
+  renderSidebarPlaylists();
+  navTo('home');
+}
+
+// =================== NAVIGATION ===================
+let currentView='home';
+function navTo(view){
+  document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
+  const el=document.getElementById('view-'+view);
+  if(el) el.classList.remove('hidden');
+  document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
+  const navEl=document.getElementById('nav-'+view);
+  if(navEl) navEl.classList.add('active');
+  currentView=view;
+  
+  if(view==='home') renderHome();
+  if(view==='favorites') renderFavorites();
+  if(view==='playlists') renderPlaylists();
+  if(view==='albums') renderAlbums();
+  if(view==='upload') setupUploadPage();
+}
+
+// =================== RENDER HOME ===================
+async function renderHome(){
+  const db = await getDB();
+  const songs = db.songs.filter(s=>s.published);
+  const albums = db.albums.filter(a=>a.published);
+  
+  const grid=document.getElementById('homeGrid');
+  grid.innerHTML='';
+  songs.slice(0,12).forEach((s,i)=>{ grid.appendChild(makeMusicCard(s,i,songs)); });
+  
+  const ap=document.getElementById('albumsPreview');
+  ap.innerHTML='';
+  albums.slice(0,6).forEach(a=>{ ap.appendChild(makeAlbumCard(a)); });
+}
+
+function makeMusicCard(song, idx, queue){
+  const div=document.createElement('div');
+  div.className='music-card';
+  const coverHtml=song.coverUrl
+    ?`<div style="position:relative;overflow:hidden;margin-bottom:12px;border-radius:8px;aspect-ratio:1"><img src="${song.coverUrl}" style="width:100%;height:100%;object-fit:cover"><div class="play-overlay"><div class="play-overlay-btn">▶</div></div></div>`
+    :`<div class="music-card-cover-placeholder" style="position:relative"><span style="font-size:40px">🎵</span><div class="play-overlay"><div class="play-overlay-btn">▶</div></div></div>`;
+  div.innerHTML=`
+    ${coverHtml}
+    <div class="music-card-actions">
+      <button class="icon-btn" onclick="event.stopPropagation();toggleFav('${song.id}',this)" title="Favoritar">🤍</button>
+      <button class="icon-btn" onclick="event.stopPropagation();openSongMenu('${song.id}')" title="Mais opções">⋯</button>
+    </div>
+    <div class="music-card-title">${song.title}</div>
+    <div class="music-card-artist">${song.artist}</div>
+  `;
+  div.onclick=()=>{ songQueue=[...queue]; queueIdx=idx; playSong(song,false); };
+  return div;
+}
+
+function makeAlbumCard(album){
+  const div=document.createElement('div');
+  div.className='music-card album-card';
+  const coverHtml=album.coverUrl
+    ?`<div style="width:100%;aspect-ratio:1;border-radius:8px;margin-bottom:12px;overflow:hidden"><img src="${album.coverUrl}" style="width:100%;height:100%;object-fit:cover"></div>`
+    :`<div class="music-card-cover-placeholder">💿</div>`;
+  div.innerHTML=`
+    ${coverHtml}
+    <div class="music-card-title">${album.title}</div>
+    <div class="music-card-artist">${album.artist} · ${album.tracks?album.tracks.length:0} faixas</div>
+  `;
+  div.onclick=()=>openAlbum(album.id);
+  return div;
+}
+
+async function openAlbum(albumId){
+  const db = await getDB();
+  const album=db.albums.find(a=>a.id===albumId);
+  if(!album) return;
+  
+  document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
+  document.getElementById('view-album-detail').classList.remove('hidden');
+  
+  const header=document.getElementById('albumDetailHeader');
+  const coverHtml=album.coverUrl
+    ?`<img src="${album.coverUrl}" style="width:100%;height:100%;object-fit:cover">`
+    :'💿';
+  header.innerHTML=`
+    <div class="playlist-cover-big">${coverHtml}</div>
+    <div class="playlist-meta">
+      <p style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)">Álbum</p>
+      <h1>${album.title}</h1>
+      <p>${album.artist} · ${album.tracks?album.tracks.length:0} faixas · ${album.genre}</p>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="playAll(getAlbumSongs('${album.id}'))">▶ Reproduzir</button>
+    </div>
+  `;
+  
+  const songs=getAlbumSongs(albumId);
+  const list=document.getElementById('albumDetailList');
+  list.innerHTML='';
+  songs.forEach((s,i)=>{ list.appendChild(makeMusicRow(s,i,songs)); });
+}
+
+async function getAlbumSongs(albumId){
+  const db = await getDB();
+  const album=db.albums.find(a=>a.id===albumId);
+  if(!album||!album.tracks) return [];
+  return album.tracks.map(t=>{
+    const song=db.songs.find(s=>s.id===t.songId);
+    return song||{id:t.songId,title:t.title||'?',artist:album.artist,genre:album.genre};
+  }).filter(Boolean);
+}
+
+function makeMusicRow(song, idx, queue){
+  // favStatus is checked async separately — default to unfaved for rendering
+  const div=document.createElement('div');
+  div.className='music-row'+(currentSong&&currentSong.id===song.id?' playing':'');
+  const thumbHtml=song.coverUrl
+    ?`<img src="${song.coverUrl}">`
+    :'🎵';
+  div.innerHTML=`
+    <div class="music-row-num">${idx+1}</div>
+    <div class="music-row-thumb">${thumbHtml}</div>
+    <div class="music-row-info">
+      <div class="music-row-title">${song.title}</div>
+      <div class="music-row-artist">${song.artist}</div>
+    </div>
+    <span class="music-row-genre">${song.genre||''}</span>
+    <div class="music-row-actions">
+      <button class="icon-btn" onclick="event.stopPropagation();toggleFav('${song.id}',this)">🤍</button>
+      <button class="icon-btn" onclick="event.stopPropagation();openSongMenu('${song.id}')">⋯</button>
+    </div>
+  `;
+  div.onclick=()=>{ songQueue=[...queue]; queueIdx=idx; playSong(song,false); };
+  return div;
+}
+
+// =================== FAVORITES ===================
+async function toggleFav(songId, btn){
+  if(!currentUser){ toast('Faça login para favoritar!','error'); return; }
+  const ud = await getUserData(currentUser.id);
+  const idx=ud.favorites.indexOf(songId);
+  if(idx>=0){ ud.favorites.splice(idx,1); btn.textContent='🤍'; btn.classList.remove('faved'); toast('Removido dos favoritos'); }
+  else{ ud.favorites.push(songId); btn.textContent='❤️'; btn.classList.add('faved'); toast('Adicionado aos favoritos ❤️','success'); }
+  await saveUserData(currentUser.id, ud);
+  updatePlayerFavBtn();
+}
+
+function toggleCurrentFav(){
+  if(!currentSong||!currentUser) return;
+  const ud=getUserData(currentUser.id);
+  const idx=ud.favorites.indexOf(currentSong.id);
+  const btn=document.getElementById('playerFavBtn');
+  if(idx>=0){ ud.favorites.splice(idx,1); btn.textContent='🤍'; btn.classList.remove('faved'); toast('Removido dos favoritos'); }
+  else{ ud.favorites.push(currentSong.id); btn.textContent='❤️'; btn.classList.add('faved'); toast('Adicionado aos favoritos ❤️','success'); }
+  saveUserData(currentUser.id,ud);
+}
+
+async function updatePlayerFavBtn(){
+  if(!currentSong||!currentUser) return;
+  const ud = await getUserData(currentUser.id);
+  const faved=ud.favorites.includes(currentSong.id);
+  const btn=document.getElementById('playerFavBtn');
+  const npsBtn=document.getElementById('npsFavBtn');
+  btn.textContent=faved?'❤️':'🤍';
+  btn.classList.toggle('faved',faved);
+  if(npsBtn){ npsBtn.textContent=faved?'❤️':'🤍'; }
+}
+
+async function renderFavorites(){
+  if(!currentUser) return;
+  const ud = await getUserData(currentUser.id);
+  const db = await getDB();
+  const songs=ud.favorites.map(id=>db.songs.find(s=>s.id===id)).filter(Boolean);
+  document.getElementById('favoritesCount').textContent=songs.length+' música'+(songs.length!==1?'s':'');
+  const list=document.getElementById('favoritesList');
+  list.innerHTML='';
+  if(!songs.length){ list.innerHTML='<p style="color:var(--text-muted);font-size:14px;padding:16px">Nenhuma música favoritada ainda. Explore e favorite!</p>'; return; }
+  songs.forEach((s,i)=>list.appendChild(makeMusicRow(s,i,songs)));
+}
+
+// =================== PLAYLISTS ===================
+async function renderSidebarPlaylists(){
+  if(!currentUser) return;
+  const ud = await getUserData(currentUser.id);
+  const container=document.getElementById('sidebarPlaylists');
+  container.innerHTML='';
+  (ud.playlists||[]).forEach(pl=>{
+    const div=document.createElement('div');
+    div.className='sidebar-item';
+    div.innerHTML=`<div class="playlist-dot">🎵</div> ${pl.name}`;
+    div.onclick=()=>openPlaylist(pl.id);
+    container.appendChild(div);
+  });
+}
+
+function openCreatePlaylist(){
+  document.getElementById('newPlaylistName').value='';
+  document.getElementById('modalCreatePlaylist').classList.remove('hidden');
+}
+
+async function createPlaylist(){
+  const name=document.getElementById('newPlaylistName').value.trim();
+  if(!name){ toast('Digite um nome','error'); return; }
+  const ud = await getUserData(currentUser.id);
+  const pl={id:'pl_'+Date.now(), name, songs:[], createdAt:Date.now()};
+  if(!ud.playlists) ud.playlists=[];
+  ud.playlists.push(pl);
+  await saveUserData(currentUser.id,ud);
+  closeModal('modalCreatePlaylist');
+  renderSidebarPlaylists();
+  toast('Playlist criada! 🎉','success');
+  openPlaylist(pl.id);
+}
+
+async function renderPlaylists(){
+  if(!currentUser) return;
+  const ud = await getUserData(currentUser.id);
+  const grid=document.getElementById('playlistsGrid');
+  grid.innerHTML='';
+  (ud.playlists||[]).forEach(pl=>{
+    const div=document.createElement('div');
+    div.className='music-card';
+    div.innerHTML=`
+      <div class="music-card-cover-placeholder">🎵</div>
+      <div class="music-card-title">${pl.name}</div>
+      <div class="music-card-artist">${(pl.songs||[]).length} músicas</div>
+    `;
+    div.onclick=()=>openPlaylist(pl.id);
+    grid.appendChild(div);
+  });
+  if(!(ud.playlists||[]).length){
+    grid.innerHTML='<p style="color:var(--text-muted);font-size:14px">Nenhuma playlist ainda. Crie uma!</p>';
+  }
+}
+
+async function openPlaylist(plId){
+  if(!currentUser) return;
+  currentPlaylistId=plId;
+  const ud = await getUserData(currentUser.id);
+  const pl=(ud.playlists||[]).find(p=>p.id===plId);
+  if(!pl) return;
+  
+  document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
+  document.getElementById('view-playlist-detail').classList.remove('hidden');
+  
+  const db = await getDB();
+  const songs=(pl.songs||[]).map(id=>db.songs.find(s=>s.id===id)).filter(Boolean);
+  
+  document.getElementById('playlistDetailHeader').innerHTML=`
+    <div class="playlist-cover-big">🎵</div>
+    <div class="playlist-meta">
+      <p style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)">Playlist</p>
+      <h1>${pl.name}</h1>
+      <p>${songs.length} música${songs.length!==1?'s':''}</p>
+    </div>
+  `;
+  
+  const list=document.getElementById('playlistDetailList');
+  list.innerHTML='';
+  songs.forEach((s,i)=>list.appendChild(makeMusicRow(s,i,songs)));
+  if(!songs.length) list.innerHTML='<p style="color:var(--text-muted);font-size:14px;padding:16px">Playlist vazia. Adicione músicas!</p>';
+}
+
+async function playAllPlaylist(){
+  if(!currentUser||!currentPlaylistId) return;
+  const ud = await getUserData(currentUser.id);
+  const pl=(ud.playlists||[]).find(p=>p.id===currentPlaylistId);
+  if(!pl) return;
+  const db = await getDB();
+  const songs=(pl.songs||[]).map(id=>db.songs.find(s=>s.id===id)).filter(Boolean);
+  if(songs.length) playAll(songs);
+}
+
+async function openAddToPlaylist(plId){
+  const ud = await getUserData(currentUser.id);
+  const pl=(ud.playlists||[]).find(p=>p.id===plId);
+  const db = await getDB();
+  const available=db.songs.filter(s=>s.published&&!(pl.songs||[]).includes(s.id));
+  const container=document.getElementById('addToPlaylistList');
+  container.innerHTML='';
+  available.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='music-row';
+    div.style.padding='8px 10px';
+    div.innerHTML=`<div class="music-row-thumb" style="width:36px;height:36px;font-size:18px">${s.coverUrl?`<img src="${s.coverUrl}">`:'🎵'}</div><div style="flex:1"><div style="font-size:13px;font-weight:500">${s.title}</div><div style="font-size:11px;color:var(--text-muted)">${s.artist}</div></div><button class="btn btn-primary btn-sm" onclick="addSongToPlaylist('${plId}','${s.id}',this)">+</button>`;
+    container.appendChild(div);
+  });
+  if(!available.length) container.innerHTML='<p style="color:var(--text-muted);font-size:13px">Todas as músicas já estão na playlist.</p>';
+  document.getElementById('modalAddToPlaylist').classList.remove('hidden');
+}
+
+async function addSongToPlaylist(plId,songId,btn){
+  const ud = await getUserData(currentUser.id);
+  const pl=(ud.playlists||[]).find(p=>p.id===plId);
+  if(!pl) return;
+  if(!pl.songs) pl.songs=[];
+  if(!pl.songs.includes(songId)){ pl.songs.push(songId); await saveUserData(currentUser.id,ud); btn.textContent='✓'; btn.disabled=true; toast('Adicionada à playlist','success'); }
+}
+
+// =================== ALBUMS PAGE ===================
+async function renderAlbums(){
+  const db = await getDB();
+  const albums=db.albums.filter(a=>a.published);
+  const grid=document.getElementById('albumsGrid');
+  grid.innerHTML='';
+  albums.forEach(a=>grid.appendChild(makeAlbumCard(a)));
+  if(!albums.length) grid.innerHTML='<p style="color:var(--text-muted)">Nenhum álbum disponível.</p>';
+}
+
+// =================== SEARCH ===================
+async function handleSearch(query){
+  document.getElementById('searchInputBig').value=query;
+  document.getElementById('searchInput').value=query;
+  if(currentView!=='search'){ navTo('search'); }
+  const area=document.getElementById('searchResultsArea');
+  if(!query.trim()){ area.innerHTML='<div style="color:var(--text-muted);font-size:14px">Digite algo para buscar...</div>'; return; }
+  const db = await getDB();
+  const q=query.toLowerCase();
+  const results=db.songs.filter(s=>s.published&&(s.title.toLowerCase().includes(q)||s.artist.toLowerCase().includes(q)||s.genre.toLowerCase().includes(q)));
+  area.innerHTML='';
+  if(!results.length){ area.innerHTML='<div style="color:var(--text-muted);font-size:14px">Nenhuma música encontrada.</div>'; return; }
+  const title=document.createElement('h3');
+  title.style.cssText='font-size:16px;margin-bottom:14px;color:var(--text-muted)';
+  title.textContent=`${results.length} resultado${results.length!==1?'s':''}`;
+  area.appendChild(title);
+  const list=document.createElement('div');
+  list.className='music-list';
+  results.forEach((s,i)=>list.appendChild(makeMusicRow(s,i,results)));
+  area.appendChild(list);
+}
+
+// =================== SONG MENU ===================
+let songMenuSongId=null;
+async function openSongMenu(songId){
+  songMenuSongId=songId;
+  const db = await getDB();
+  const song=db.songs.find(s=>s.id===songId);
+  document.getElementById('songMenuTitle').textContent=song?song.title:'Opções';
+  const opts=document.getElementById('songMenuOptions');
+  opts.innerHTML='';
+  const ud=currentUser ? await getUserData(currentUser.id) : null;
+  const faved=ud&&ud.favorites.includes(songId);
+  const actions=[
+    {icon:faved?'💔':'❤️', label:faved?'Remover dos Favoritos':'Adicionar aos Favoritos', fn:`quickFav('${songId}')`},
+    {icon:'▶', label:'Reproduzir', fn:`playSongById('${songId}')`},
+    {icon:'📋', label:'Adicionar a Playlist...', fn:`addToAnyPlaylist('${songId}')`},
+  ];
+  actions.forEach(a=>{
+    const div=document.createElement('div');
+    div.className='sidebar-item';
+    div.style.cssText='background:var(--card2);border-radius:8px;padding:10px 14px';
+    div.innerHTML=`<span style="font-size:16px">${a.icon}</span> ${a.label}`;
+    div.onclick=()=>{ eval(a.fn); closeModal('modalSongMenu'); };
+    opts.appendChild(div);
+  });
+  document.getElementById('modalSongMenu').classList.remove('hidden');
+}
+
+async function quickFav(songId){
+  if(!currentUser){ toast('Faça login!','error'); return; }
+  const ud = await getUserData(currentUser.id);
+  const idx=ud.favorites.indexOf(songId);
+  if(idx>=0){ ud.favorites.splice(idx,1); toast('Removido dos favoritos'); }
+  else{ ud.favorites.push(songId); toast('Adicionado aos favoritos ❤️','success'); }
+  await saveUserData(currentUser.id,ud);
+  updatePlayerFavBtn();
+}
+
+async function playSongById(id){
+  const db = await getDB();
+  const s=db.songs.find(x=>x.id===id);
+  if(s) playSong(s);
+}
+
+async function addToAnyPlaylist(songId){
+  if(!currentUser){ toast('Faça login!','error'); return; }
+  const ud = await getUserData(currentUser.id);
+  if(!(ud.playlists||[]).length){ toast('Crie uma playlist primeiro!','info'); openCreatePlaylist(); return; }
+  const container=document.getElementById('addToPlaylistList');
+  container.innerHTML='';
+  (ud.playlists||[]).forEach(pl=>{
+    const div=document.createElement('div');
+    div.className='music-row';
+    div.innerHTML=`<div class="playlist-dot">🎵</div><div style="flex:1;font-size:14px;font-weight:500">${pl.name}</div><span style="font-size:12px;color:var(--text-muted)">${(pl.songs||[]).length} músicas</span>`;
+    div.onclick=()=>{ addSongToPlaylist(pl.id,songId,{textContent:'',disabled:false}); closeModal('modalAddToPlaylist'); };
+    container.appendChild(div);
+  });
+  document.getElementById('modalAddToPlaylist').classList.remove('hidden');
+}
+
+// =================== UPLOAD ===================
+function setupUploadPage(){
+  const isCreator=currentUser&&currentUser.type==='creator';
+  if(!isCreator){
+    document.getElementById('view-upload').innerHTML='<p style="color:var(--text-muted)">Apenas criadores podem enviar músicas. Recadastre-se como criador.</p>';
+  }
+}
+
+function switchUploadTab(tab){
+  document.getElementById('uploadMusic').classList.toggle('hidden',tab!=='music');
+  document.getElementById('uploadAlbum').classList.toggle('hidden',tab!=='album');
+}
+
+let albumTrackCount=0;
+function addAlbumTrack(){
+  albumTrackCount++;
+  const div=document.createElement('div');
+  div.style.cssText='background:var(--card2);border-radius:8px;padding:12px;margin-bottom:8px';
+  div.innerHTML=`<div style="font-size:12px;color:var(--accent);margin-bottom:8px">Faixa ${albumTrackCount}</div>
+  <input type="text" placeholder="Nome da faixa" style="margin-bottom:8px" id="at_title_${albumTrackCount}">
+  <input type="file" accept="audio/*" id="at_audio_${albumTrackCount}">`;
+  document.getElementById('albumTrackList').appendChild(div);
+}
+
+function submitSong(){
+  if(!currentUser||currentUser.type!=='creator'){ toast('Apenas criadores podem enviar músicas','error'); return; }
+  const title=document.getElementById('upTitle').value.trim();
+  const artist=document.getElementById('upArtist').value.trim();
+  const genre=document.getElementById('upGenre').value;
+  const lyrics=document.getElementById('upLyrics').value.trim();
+  if(!title||!artist||!genre){ toast('Preencha os campos obrigatórios','error'); return; }
+  
+  const coverFile=document.getElementById('upCover').files[0];
+  const audioFile=document.getElementById('upAudio').files[0];
+  
+  const processSubmit=async(coverUrl,audioUrl)=>{
+    const song={
+      id:'song_'+Date.now(),title,artist,genre,lyrics:lyrics||null,
+      coverUrl:coverUrl||null, audioUrl:audioUrl||null,
+      creatorId:currentUser.id, creatorName:currentUser.username,
+      published:false, status:'pending', createdAt:Date.now()
+    };
+    if(currentUser.isVerifiedCreator){
+      song.published=true; song.status='approved';
+      await saveDoc('songs', song.id, song);
+      toast('Música publicada automaticamente! ✅','success');
+    } else {
+      await saveDoc('pending_songs', song.id, song);
+      toast('Música enviada para aprovação! ⏳','info');
+    }
+    ['upTitle','upArtist','upLyrics'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('upGenre').value='';
+  };
+  
+  if(coverFile){
+    const fr=new FileReader();
+    fr.onload=(e)=>{
+      const coverUrl=e.target.result;
+      if(audioFile){ const fr2=new FileReader(); fr2.onload=(e2)=>processSubmit(coverUrl,e2.target.result); fr2.readAsDataURL(audioFile); }
+      else processSubmit(coverUrl,null);
+    };
+    fr.readAsDataURL(coverFile);
+  } else if(audioFile){
+    const fr=new FileReader();
+    fr.onload=(e)=>processSubmit(null,e.target.result);
+    fr.readAsDataURL(audioFile);
+  } else processSubmit(null,null);
+}
+
+let adminAlbumTrackCount=0;
+function addAdminAlbumTrack(){
+  adminAlbumTrackCount++;
+  const div=document.createElement('div');
+  div.style.cssText='background:var(--dark);border-radius:8px;padding:10px;margin-bottom:6px';
+  div.innerHTML=`<div style="font-size:11px;color:var(--accent);margin-bottom:6px">Faixa ${adminAlbumTrackCount}</div>
+  <input type="text" placeholder="Nome da faixa" style="margin-bottom:6px" id="aat_title_${adminAlbumTrackCount}">
+  <input type="file" accept="audio/*" id="aat_audio_${adminAlbumTrackCount}">`;
+  document.getElementById('adminAlbumTrackList').appendChild(div);
+}
+
+function submitAlbum(){
+  if(!currentUser||currentUser.type!=='creator'){ toast('Apenas criadores podem enviar álbuns','error'); return; }
+  const title=document.getElementById('upAlbumTitle').value.trim();
+  const artist=document.getElementById('upAlbumArtist').value.trim();
+  const genre=document.getElementById('upAlbumGenre').value;
+  if(!title||!artist||!genre){ toast('Preencha os campos obrigatórios','error'); return; }
+  toast('Álbum enviado para aprovação! ⏳','info');
+}
+
+// =================== ADMIN ===================
+function doAdminLogin(){
+  const user=document.getElementById('adminUser').value;
+  const pass=document.getElementById('adminPass').value;
+  if(user==='NTX_apenas'&&pass==='NTX1234'){
+    showPage('admin-page');
+    renderAdmin();
+  } else {
+    showError('adminLoginError','Credenciais inválidas.');
+  }
+}
+
+function doAdminLogout(){ showPage('admin-auth-page'); }
+
+function adminNav(section){
+  document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.admin-nav-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById('admin-'+section).classList.add('active');
+  event.currentTarget.classList.add('active');
+  renderAdminSection(section);
+}
+
+function renderAdmin(){
+  renderAdminSection('dashboard');
+}
+
+async function renderAdminSection(section){
+  const db = await getDB();
+  if(section==='dashboard'){
+    const stats=document.getElementById('adminStats');
+    stats.innerHTML=`
+      <div class="stat-card"><div class="stat-value">${db.songs.filter(s=>s.published).length}</div><div class="stat-label">Músicas Publicadas</div></div>
+      <div class="stat-card"><div class="stat-value">${db.albums.filter(a=>a.published).length}</div><div class="stat-label">Álbuns</div></div>
+      <div class="stat-card"><div class="stat-value">${db.users.length}</div><div class="stat-label">Usuários</div></div>
+      <div class="stat-card"><div class="stat-value">${(db.pending_songs||[]).length}</div><div class="stat-label">Pendentes</div></div>
+    `;
+    const lastSongs=document.getElementById('adminLastSongs');
+    const songs=db.songs.filter(s=>s.published).slice(-5).reverse();
+    lastSongs.innerHTML='<table class="admin-table"><thead><tr><th>Título</th><th>Artista</th><th>Gênero</th></tr></thead><tbody>'+
+      songs.map(s=>`<tr><td>${s.title}</td><td>${s.artist}</td><td>${s.genre}</td></tr>`).join('')+'</tbody></table>';
+  }
+  if(section==='songs'){
+    const tbody=document.getElementById('adminSongsBody');
+    tbody.innerHTML=db.songs.map(s=>`<tr>
+      <td>${s.coverUrl?`<img src="${s.coverUrl}" style="width:32px;height:32px;border-radius:4px;object-fit:cover">`:'🎵'}</td>
+      <td>${s.title}</td><td>${s.artist}</td><td>${s.genre}</td>
+      <td><span class="badge ${s.published?'badge-green':'badge-yellow'}">${s.published?'Publicada':'Rascunho'}</span></td>
+      <td style="display:flex;gap:6px">
+        ${!s.published?`<button class="btn btn-primary btn-sm" onclick="adminPublishSong('${s.id}')">Publicar</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="adminDeleteSong('${s.id}')">🗑</button>
+      </td>
+    </tr>`).join('');
+  }
+  if(section==='albums'){
+    const tbody=document.getElementById('adminAlbumsBody');
+    tbody.innerHTML=db.albums.map(a=>`<tr>
+      <td>${a.title}</td><td>${a.artist}</td><td>${a.tracks?a.tracks.length:0}</td>
+      <td><span class="badge ${a.published?'badge-green':'badge-yellow'}">${a.published?'Publicado':'Rascunho'}</span></td>
+      <td style="display:flex;gap:6px">
+        ${!a.published?`<button class="btn btn-primary btn-sm" onclick="adminPublishAlbum('${a.id}')">Publicar</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="adminDeleteAlbum('${a.id}')">🗑</button>
+      </td>
+    </tr>`).join('');
+  }
+  if(section==='pending'){
+    const ps=db.pending_songs||[];
+    const pa=db.pending_albums||[];
+    document.getElementById('pendingSongsBody').innerHTML=ps.map(s=>`<tr>
+      <td>${s.title}</td><td>${s.artist}</td>
+      <td>${s.creatorName||'?'}</td><td>${s.genre}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-primary btn-sm" onclick="approveSong('${s.id}')">✓ Aprovar</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectSong('${s.id}')">✕ Rejeitar</button>
+      </td>
+    </tr>`).join('');
+    document.getElementById('pendingAlbumsBody').innerHTML=pa.map(a=>`<tr>
+      <td>${a.title}</td><td>${a.artist}</td><td>${a.creatorName||'?'}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-primary btn-sm" onclick="approveAlbum('${a.id}')">✓ Aprovar</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectAlbum('${a.id}')">✕ Rejeitar</button>
+      </td>
+    </tr>`).join('');
+  }
+  if(section==='users'){
+    document.getElementById('adminUsersBody').innerHTML=db.users.map(u=>`<tr>
+      <td>${u.username}</td><td>${u.email}</td>
+      <td><span class="badge badge-purple">${u.type==='creator'?'Criador':'Ouvinte'}</span></td>
+      <td><span class="badge ${u.confirmed?'badge-green':'badge-yellow'}">${u.confirmed?'Ativo':'Pendente'}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="adminDeleteUser('${u.id}')">🗑</button></td>
+    </tr>`).join('');
+  }
+  if(section==='creators'){
+    const creators=db.users.filter(u=>u.type==='creator');
+    document.getElementById('adminCreatorsBody').innerHTML=creators.map(u=>`<tr>
+      <td>${u.username} ${u.isVerifiedCreator?'<span class="verified-badge">✅ Verificado</span>':''}</td>
+      <td>${u.email}</td>
+      <td><span class="badge ${u.isVerifiedCreator?'badge-green':'badge-yellow'}">${u.isVerifiedCreator?'Verificado':'Padrão'}</span></td>
+      <td style="display:flex;gap:6px">
+        ${!u.isVerifiedCreator
+          ?`<button class="btn btn-primary btn-sm" onclick="verifyCreator('${u.id}')">✅ Verificar</button>`
+          :`<button class="btn btn-ghost btn-sm" onclick="unverifyCreator('${u.id}')">Remover</button>`}
+      </td>
+    </tr>`).join('');
+  }
+}
+
+async function verifyCreator(uid){
+  await saveDoc('users', uid, {isVerifiedCreator:true});
+  toast('Criador verificado! ✅','success'); renderAdminSection('creators');
+}
+async function unverifyCreator(uid){
+  await saveDoc('users', uid, {isVerifiedCreator:false});
+  renderAdminSection('creators');
+}
+async function adminDeleteUser(uid){
+  await deleteFireDoc('users', uid);
+  toast('Usuário removido','info'); renderAdminSection('users');
+}
+async function approveSong(id){
+  const db = await getDB();
+  const song = (db.pending_songs||[]).find(s=>s.id===id);
+  if(!song) return;
+  await saveDoc('songs', id, {...song, published:true, status:'approved'});
+  await deleteFireDoc('pending_songs', id);
+  toast('Música aprovada e publicada! ✅','success'); renderAdminSection('pending');
+}
+async function rejectSong(id){
+  await deleteFireDoc('pending_songs', id);
+  toast('Música rejeitada','info'); renderAdminSection('pending');
+}
+async function approveAlbum(id){
+  const db = await getDB();
+  const album = (db.pending_albums||[]).find(a=>a.id===id);
+  if(!album) return;
+  await saveDoc('albums', id, {...album, published:true});
+  await deleteFireDoc('pending_albums', id);
+  toast('Álbum aprovado! ✅','success'); renderAdminSection('pending');
+}
+async function rejectAlbum(id){
+  await deleteFireDoc('pending_albums', id);
+  renderAdminSection('pending');
+}
+
+function openAdminAddSong(){
+  adminAlbumTrackCount=0;
+  document.getElementById('adminAlbumTrackList').innerHTML='';
+  document.getElementById('modalAdminSong').classList.remove('hidden');
+}
+
+async function adminAddSong(){
+  const title=document.getElementById('adminSongTitle').value.trim();
+  const artist=document.getElementById('adminSongArtist').value.trim();
+  const genre=document.getElementById('adminSongGenre').value;
+  const lyrics=document.getElementById('adminSongLyrics').value.trim();
+  if(!title||!artist||!genre){ toast('Preencha os campos obrigatórios','error'); return; }
+  
+  const coverFile=document.getElementById('adminSongCover').files[0];
+  const audioFile=document.getElementById('adminSongAudio').files[0];
+  
+  const processAdd=async(coverUrl,audioUrl)=>{
+    const song={id:'song_'+Date.now(),title,artist,genre,lyrics:lyrics||null,coverUrl:coverUrl||null,audioUrl:audioUrl||null,published:true,status:'approved',createdAt:Date.now()};
+    await saveDoc('songs', song.id, song);
+    closeModal('modalAdminSong');
+    toast('Música adicionada e publicada! 🎵','success');
+    renderAdminSection('songs');
+    renderAdminSection('dashboard');
+  };
+  
+  if(coverFile){
+    const fr=new FileReader();
+    fr.onload=(e)=>{
+      const coverUrl=e.target.result;
+      if(audioFile){ const fr2=new FileReader(); fr2.onload=(e2)=>processAdd(coverUrl,e2.target.result); fr2.readAsDataURL(audioFile); }
+      else processAdd(coverUrl,null);
+    };
+    fr.readAsDataURL(coverFile);
+  } else if(audioFile){
+    const fr=new FileReader();
+    fr.onload=(e)=>processAdd(null,e.target.result);
+    fr.readAsDataURL(audioFile);
+  } else processAdd(null,null);
+}
+
+async function adminPublishSong(id){
+  await saveDoc('songs', id, {published:true});
+  renderAdminSection('songs'); toast('Publicada!','success');
+}
+async function adminDeleteSong(id){
+  if(!confirm('Deletar esta música?')) return;
+  await deleteFireDoc('songs', id);
+  renderAdminSection('songs'); toast('Música removida','info');
+}
+
+function openAdminAddAlbum(){
+  adminAlbumTrackCount=0;
+  document.getElementById('adminAlbumTrackList').innerHTML='';
+  document.getElementById('modalAdminAlbum').classList.remove('hidden');
+}
+
+async function adminAddAlbum(){
+  const title=document.getElementById('adminAlbumTitle').value.trim();
+  const artist=document.getElementById('adminAlbumArtist').value.trim();
+  const genre=document.getElementById('adminAlbumGenre').value;
+  if(!title||!artist||!genre){ toast('Preencha os campos obrigatórios','error'); return; }
+  
+  const tracks=[];
+  for(let i=1;i<=adminAlbumTrackCount;i++){
+    const t=document.getElementById(`aat_title_${i}`);
+    if(t&&t.value.trim()) tracks.push({songId:'song_'+Date.now()+'_'+i, title:t.value.trim()});
+  }
+  
+  const coverFile=document.getElementById('adminAlbumCover').files[0];
+  const processAdd=async(coverUrl)=>{
+    const album={id:'album_'+Date.now(),title,artist,genre,coverUrl:coverUrl||null,tracks,published:true,createdAt:Date.now()};
+    await saveDoc('albums', album.id, album);
+    closeModal('modalAdminAlbum');
+    toast('Álbum publicado! 💿','success');
+    renderAdminSection('albums');
+  };
+  
+  if(coverFile){ const fr=new FileReader(); fr.onload=(e)=>processAdd(e.target.result); fr.readAsDataURL(coverFile); }
+  else processAdd(null);
+}
+
+async function adminPublishAlbum(id){
+  await saveDoc('albums', id, {published:true});
+  renderAdminSection('albums'); toast('Álbum publicado!','success');
+}
+async function adminDeleteAlbum(id){
+  if(!confirm('Deletar este álbum?')) return;
+  await deleteFireDoc('albums', id);
+  renderAdminSection('albums'); toast('Álbum removido','info');
+}
+
+// =================== LYRICS ===================
+function toggleLyrics(){
+  lyricsOpen=!lyricsOpen;
+  document.getElementById('lyricsPanel').classList.toggle('open',lyricsOpen);
+  document.getElementById('lyricsToggleBtn').classList.toggle('active',lyricsOpen);
+}
+
+// =================== UI HELPERS ===================
+function toggleSenha(inputId, btnId){
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if(input.type === 'password'){
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+function toggleProfileMenu(){
+  document.getElementById('profileDropdown').classList.toggle('hidden');
+}
+function closeMenu(){ document.getElementById('profileDropdown').classList.add('hidden'); }
+
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('profileDropdown');
+  const btn=document.getElementById('avatarBtn');
+  if(dd&&!dd.classList.contains('hidden')&&!dd.contains(e.target)&&e.target!==btn){
+    dd.classList.add('hidden');
+  }
+});
+
+function showError(id,msg){
+  const el=document.getElementById(id);
+  el.textContent=msg; el.classList.remove('hidden');
+  setTimeout(()=>el.classList.add('hidden'),4000);
+}
+
+function toast(msg, type='info'){
+  const container=document.getElementById('toastContainer');
+  const div=document.createElement('div');
+  div.className=`toast toast-${type}`;
+  div.textContent=msg;
+  container.appendChild(div);
+  setTimeout(()=>div.remove(),3000);
+}
+
+// =================== SEED DATA ===================
+async function seedData(){
+  const db = await getDB();
+  if(db.songs.length > 0) return;
+  
+  const songs=[
+    {id:'seed_1',title:'Neon Dreams',artist:'Luna Eclipse',genre:'Electronic',lyrics:'Em neon dreams...\nAs luzes piscam na noite...\nE eu danço com o vento...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
+    {id:'seed_2',title:'Violeta',artist:'Marco Costa',genre:'MPB',lyrics:'Violeta, flor do cerrado...\nBrota no sertão...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
+    {id:'seed_3',title:'Bass Drop',artist:'DJ Krypton',genre:'Electronic',lyrics:null,published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
+    {id:'seed_4',title:'Saudade de Minas',artist:'Trio Serra',genre:'Sertanejo',lyrics:'Saudade de Minas\nQue fica no coração...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
+    {id:'seed_5',title:'Midnight Run',artist:'The Shadows',genre:'Rock',lyrics:'Running through the night...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
+    {id:'seed_6',title:'Favela Dreams',artist:'MC Vitor',genre:'Funk',lyrics:'Na favela eu cresci...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
+  ];
+  for(const s of songs) await saveDoc('songs', s.id, s);
+  
+  const albums=[
+    {id:'album_seed_1',title:'Neon Universe',artist:'Luna Eclipse',genre:'Electronic',coverUrl:null,published:true,tracks:[{songId:'seed_1',title:'Neon Dreams'},{songId:'seed_3',title:'Bass Drop'}],createdAt:Date.now()},
+    {id:'album_seed_2',title:'Raízes',artist:'Marco Costa',genre:'MPB',coverUrl:null,published:true,tracks:[{songId:'seed_2',title:'Violeta'}],createdAt:Date.now()},
+  ];
+  for(const a of albums) await saveDoc('albums', a.id, a);
+  console.log('[Meloria] Dados iniciais inseridos no Firebase ✅');
+}
+
+// =================== INIT ===================
+async function init(){
+  // Aguarda Firebase estar pronto
+  let tries = 0;
+  while(!window.saveDoc && tries < 20){ await new Promise(r=>setTimeout(r,100)); tries++; }
+  await seedData();
+  console.log('[Meloria] App pronto ✅');
+}
+
+init();
+
+document.addEventListener('DOMContentLoaded', function(){
+  const adminBtn = document.getElementById('adminLinkBtn');
+  if(adminBtn){
+    adminBtn.addEventListener('click', function(e){
+      e.preventDefault();
+      showPage('admin-auth-page');
+    });
+  }
+});
+</script>
+</body>
+</html>
