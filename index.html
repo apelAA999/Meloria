@@ -1134,6 +1134,11 @@ async function _fbSyncCollection(colName, newData){
     });
     await batch.commit();
     console.log(`[Meloria] ${colName} sync ✅ (${newData.length} docs)`);
+    // Se o usuário estiver no app e na home, re-renderiza
+    if(typeof currentUser !== 'undefined' && currentUser && typeof currentView !== 'undefined') {
+      if(currentView === 'home') renderHome();
+      if(currentView === 'albums') renderAlbums();
+    }
   } catch(e) {
     console.error(`[Meloria] Erro ao sincronizar ${colName}:`, e);
   }
@@ -2186,46 +2191,12 @@ function toast(msg, type='info'){
   setTimeout(()=>div.remove(),3000);
 }
 
-// =================== SEED DATA ===================
-function seedData(){
-  const db=getDB();
-  if(db.songs.length>0){
-    // Garante que Conto do Pescador sempre existe
-    if(!db.songs.find(s=>s.id==='seed_7')){
-      db.songs.push({id:'seed_7',title:'Conto do Pescador',artist:'Zé Ramalho',genre:'MPB',
-        lyrics:'Era uma vez um pescador\nQue na beira do rio pescava\nEm cada anzol que ele lançava\nUm sonho ele fisgava\n\nO rio era seu lar\nO barco era seu mundo\nE o peixe que ele ia pescar\nEra pro fundo do fundo\n\nConto do pescador\nHistória de esperança\nDe quem vive no amor\nE nunca mais alcança',
-        published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()});
-      saveSongs(db.songs);
-    }
-    return;
-  }
-  
-  const songs=[
-    {id:'seed_1',title:'Neon Dreams',artist:'Luna Eclipse',genre:'Electronic',lyrics:'Em neon dreams...\nAs luzes piscam na noite...\nE eu danço com o vento...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
-    {id:'seed_2',title:'Violeta',artist:'Marco Costa',genre:'MPB',lyrics:'Violeta, flor do cerrado...\nBrota no sertão...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
-    {id:'seed_3',title:'Bass Drop',artist:'DJ Krypton',genre:'Electronic',lyrics:null,published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
-    {id:'seed_4',title:'Saudade de Minas',artist:'Trio Serra',genre:'Sertanejo',lyrics:'Saudade de Minas\nQue fica no coração...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
-    {id:'seed_5',title:'Midnight Run',artist:'The Shadows',genre:'Rock',lyrics:'Running through the night...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
-    {id:'seed_6',title:'Favela Dreams',artist:'MC Vitor',genre:'Funk',lyrics:'Na favela eu cresci...',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
-    {id:'seed_7',title:'Conto do Pescador',artist:'Zé Ramalho',genre:'MPB',lyrics:'Era uma vez um pescador\nQue na beira do rio pescava\nEm cada anzol que ele lançava\nUm sonho ele fisgava\n\nO rio era seu lar\nO barco era seu mundo\nE o peixe que ele ia pescar\nEra pro fundo do fundo\n\nConto do pescador\nHistória de esperança\nDe quem vive no amor\nE nunca mais alcança',published:true,status:'approved',coverUrl:null,audioUrl:null,createdAt:Date.now()},
-  ];
-  saveSongs(songs);
-  
-  const albums=[
-    {id:'album_seed_1',title:'Neon Universe',artist:'Luna Eclipse',genre:'Electronic',coverUrl:null,published:true,
-     tracks:[{songId:'seed_1',title:'Neon Dreams'},{songId:'seed_3',title:'Bass Drop'}],createdAt:Date.now()},
-    {id:'album_seed_2',title:'Raízes',artist:'Marco Costa',genre:'MPB',coverUrl:null,published:true,
-     tracks:[{songId:'seed_2',title:'Violeta'}],createdAt:Date.now()},
-  ];
-  saveAlbums(albums);
-}
+// Sem seed data - conteúdo gerenciado 100% pelo painel admin
 
 // =================== INIT ===================
 (async () => {
+  try { localStorage.removeItem('mel_songs'); localStorage.removeItem('mel_albums'); localStorage.removeItem('mel_pending_songs'); localStorage.removeItem('mel_pending_albums'); } catch(e) {}
   await loadGlobalData();
-  // Seed apenas se o Firebase estiver completamente vazio
-  seedData();
-  // Re-renderiza a home se o usuário já estiver logado
   if(currentUser && currentView === 'home') renderHome();
 })();
 </script>
