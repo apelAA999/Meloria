@@ -1046,15 +1046,22 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 
 <script>
 // =================== FIREBASE (músicas e álbuns globais) ===================
-const _fbApp = firebase.initializeApp({
-  apiKey: "AIzaSyBGsZ0D7bKL4n6EBWXDqyRfyRyaxj4j6ds",
-  authDomain: "meloria-19307.firebaseapp.com",
-  projectId: "meloria-19307",
-  storageBucket: "meloria-19307.firebasestorage.app",
-  messagingSenderId: "1049159562324",
-  appId: "1:1049159562324:web:8a4fc60f838471615a69c1"
-});
-const _db = firebase.firestore();
+let _db = null;
+let _fbAvailable = false;
+try {
+  firebase.initializeApp({
+    apiKey: "AIzaSyBGsZ0D7bKL4n6EBWXDqyRfyRyaxj4j6ds",
+    authDomain: "meloria-19307.firebaseapp.com",
+    projectId: "meloria-19307",
+    storageBucket: "meloria-19307.firebasestorage.app",
+    messagingSenderId: "1049159562324",
+    appId: "1:1049159562324:web:8a4fc60f838471615a69c1"
+  });
+  _db = firebase.firestore();
+  _fbAvailable = true;
+} catch(e) {
+  console.warn('[Meloria] Firebase não disponível, usando localStorage:', e.message);
+}
 
 // Cache local para não travar a UI
 let _songsCache = null;
@@ -1063,6 +1070,7 @@ let _pendingSongsCache = null;
 let _pendingAlbumsCache = null;
 
 async function _fbGetCol(col){
+  if(!_fbAvailable) return JSON.parse(localStorage.getItem('mel_'+col)||'[]');
   const snap = await _db.collection(col).get();
   return snap.docs.map(d => ({id: d.id, ...d.data()}));
 }
@@ -1115,18 +1123,21 @@ function getDB(){
 function saveUsers(d){localStorage.setItem('mel_users',JSON.stringify(d))}
 // Sincroniza um array inteiro com uma coleção do Firebase
 // Usa batch: salva os novos/atualizados E deleta os que foram removidos
-async function _fbSyncCollection(colName, newData, oldData){
+async function _fbSyncCollection(colName, newData){
+  if(!_fbAvailable) return;
   try {
     const col = _db.collection(colName);
+    // Busca todos os docs atuais do Firestore para deletar os removidos
+    const snap = await col.get();
     const batch = _db.batch();
-    // Salva/atualiza todos os documentos novos
+    const newIds = new Set(newData.map(x=>x.id));
+    // Deleta os que não estão mais na lista
+    snap.docs.forEach(doc => {
+      if(!newIds.has(doc.id)) batch.delete(doc.ref);
+    });
+    // Salva/atualiza todos
     newData.forEach(item => {
       batch.set(col.doc(item.id), item);
-    });
-    // Deleta documentos que existiam antes mas foram removidos
-    const newIds = new Set(newData.map(x=>x.id));
-    (oldData||[]).forEach(item => {
-      if(!newIds.has(item.id)) batch.delete(col.doc(item.id));
     });
     await batch.commit();
     console.log(`[Meloria] ${colName} sync ✅ (${newData.length} docs)`);
@@ -1136,28 +1147,24 @@ async function _fbSyncCollection(colName, newData, oldData){
 }
 
 function saveSongs(d){
-  const prev = _songsCache;
   _songsCache = d;
   localStorage.setItem('mel_songs',JSON.stringify(d));
-  _fbSyncCollection('songs', d, prev);
+  _fbSyncCollection('songs', d);
 }
 function saveAlbums(d){
-  const prev = _albumsCache;
   _albumsCache = d;
   localStorage.setItem('mel_albums',JSON.stringify(d));
-  _fbSyncCollection('albums', d, prev);
+  _fbSyncCollection('albums', d);
 }
 function savePendingSongs(d){
-  const prev = _pendingSongsCache;
   _pendingSongsCache = d;
   localStorage.setItem('mel_pending_songs',JSON.stringify(d));
-  _fbSyncCollection('pending_songs', d, prev);
+  _fbSyncCollection('pending_songs', d);
 }
 function savePendingAlbums(d){
-  const prev = _pendingAlbumsCache;
   _pendingAlbumsCache = d;
   localStorage.setItem('mel_pending_albums',JSON.stringify(d));
-  _fbSyncCollection('pending_albums', d, prev);
+  _fbSyncCollection('pending_albums', d);
 }
 
 function getUserData(uid){
