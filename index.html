@@ -64,12 +64,18 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 .success-msg{color:var(--green);font-size:12px;margin-top:4px}
 
 /* ====== PAGES ====== */
-.page{display:none}
-.page.active{display:block}
+/* Todas as páginas ficam escondidas por padrão */
+.page{display:none!important;position:fixed;inset:0}
+/* Páginas de auth - centraliza o conteúdo */
+.auth-bg.page.active{display:flex!important;align-items:center;justify-content:center}
+/* App principal - coluna com header+body+player */
+#app-page.page.active{display:flex!important;flex-direction:column}
+/* Admin - linha com sidebar+content */
+#admin-page.page.active{display:flex!important}
 
 /* ====== AUTH PAGES ====== */
 .auth-bg{
-  min-height:100vh;display:flex!important;align-items:center;justify-content:center;
+  min-height:100vh;align-items:center;justify-content:center;
   background:radial-gradient(ellipse at 30% 50%, rgba(124,58,237,.15) 0%, transparent 60%),
              radial-gradient(ellipse at 70% 20%, rgba(168,85,247,.1) 0%, transparent 50%),
              var(--black);
@@ -106,12 +112,10 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 
 /* ====== APP LAYOUT ====== */
 #app-page{
-  display:none;
   flex-direction:column;
   height:100vh;
   overflow:hidden;
 }
-#app-page.active{display:flex}
 
 .app-header{
   height:64px;background:rgba(17,17,24,.95);
@@ -385,8 +389,7 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 }
 
 /* ====== ADMIN PAGE ====== */
-#admin-page{display:none;min-height:100vh}
-#admin-page.active{display:flex}
+#admin-page{min-height:100vh}
 .admin-layout{display:flex;width:100%;min-height:100vh}
 .admin-sidebar{
   width:220px;flex-shrink:0;background:var(--dark);border-right:1px solid var(--border);
@@ -563,12 +566,21 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
   <div class="auth-box" style="text-align:center">
     <div style="font-size:56px;margin-bottom:16px">📧</div>
     <div class="auth-logo">Confirme seu Email</div>
-    <p style="color:var(--text-muted);font-size:14px;margin:12px 0 24px">
-      Enviamos um email de confirmação para <strong id="confirmEmailDisplay"></strong>.<br>
-      Verifique sua caixa de entrada e clique no link para ativar sua conta.
+    <p style="color:var(--text-muted);font-size:14px;margin:12px 0 16px">
+      Enviamos um código de 6 dígitos para <strong id="confirmEmailDisplay"></strong>.<br>
+      Verifique sua caixa de entrada.
     </p>
-    <button class="btn btn-primary" onclick="confirmEmail()" id="confirmBtn">✓ Já confirmei meu email</button>
-    <p style="color:var(--text-muted);font-size:12px;margin-top:12px">Não recebeu? <a href="#" style="color:var(--accent)" onclick="resendConfirmEmail()">Reenviar email</a></p>
+    <div class="form-group" style="text-align:left">
+      <label>Código de verificação</label>
+      <input type="text" id="verifyCodeInput" placeholder="000000" maxlength="6" 
+             style="font-size:24px;text-align:center;letter-spacing:8px">
+    </div>
+    <div class="error-msg hidden" id="verifyError"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="confirmEmail()">Verificar</button>
+    <p style="color:var(--text-muted);font-size:12px;margin-top:12px">
+      Não recebeu? <a href="#" style="color:var(--accent)" onclick="resendConfirmEmail()">Reenviar código</a>
+    </p>
+    <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px" onclick="showPage('auth-page')">← Voltar</button>
   </div>
 </div>
 
@@ -1143,30 +1155,43 @@ function saveUsers(d){localStorage.setItem('mel_users',JSON.stringify(d))}
 // Sincroniza um array inteiro com uma coleção do Firebase
 // Usa batch: salva os novos/atualizados E deleta os que foram removidos
 async function _fbSyncCollection(colName, newData){
-  if(!_fbAvailable) return;
+  if(!_fbAvailable || !_db) {
+    console.warn('[Meloria] Firebase não disponível para sync');
+    return;
+  }
   try {
     const col = _db.collection(colName);
-    // Busca todos os docs atuais do Firestore para deletar os removidos
+    // Deleta tudo e recria (garantido)
     const snap = await col.get();
-    const batch = _db.batch();
-    const newIds = new Set(newData.map(x=>x.id));
-    // Deleta os que não estão mais na lista
-    snap.docs.forEach(doc => {
-      if(!newIds.has(doc.id)) batch.delete(doc.ref);
-    });
-    // Salva/atualiza todos
-    newData.forEach(item => {
-      batch.set(col.doc(item.id), item);
-    });
-    await batch.commit();
-    console.log(`[Meloria] ${colName} sync ✅ (${newData.length} docs)`);
-    // Se o usuário estiver no app e na home, re-renderiza
-    if(typeof currentUser !== 'undefined' && currentUser && typeof currentView !== 'undefined') {
-      if(currentView === 'home') renderHome();
-      if(currentView === 'albums') renderAlbums();
+    // Usa batches de 500 (limite do Firestore)
+    const batchSize = 490;
+    // Primeiro deleta todos os docs existentes
+    for(let i = 0; i < snap.docs.length; i += batchSize){
+      const batch = _db.batch();
+      snap.docs.slice(i, i+batchSize).forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    }
+    // Depois insere os novos
+    for(let i = 0; i < newData.length; i += batchSize){
+      const batch = _db.batch();
+      newData.slice(i, i+batchSize).forEach(item => {
+        // Remove campos undefined que o Firestore rejeita
+        const clean = JSON.parse(JSON.stringify(item));
+        batch.set(col.doc(clean.id), clean);
+      });
+      await batch.commit();
+    }
+    console.log(`[Meloria] ${colName} sync ✅ ${newData.length} docs`);
+    // Re-renderiza a view atual
+    if(typeof currentUser !== 'undefined' && currentUser) {
+      const v = typeof currentView !== 'undefined' ? currentView : '';
+      if(v==='home') renderHome();
+      else if(v==='albums') renderAlbums();
+      else if(v==='songs') renderSongsPage();
     }
   } catch(e) {
-    console.error(`[Meloria] Erro ao sincronizar ${colName}:`, e);
+    console.error(`[Meloria] ERRO sync ${colName}:`, e.message, e);
+    toast('Erro ao salvar: ' + e.message, 'error');
   }
 }
 
@@ -1283,15 +1308,14 @@ function playAll(songs){
 
 // =================== PAGES ===================
 function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='';});
-  const pg=document.getElementById(id);
-  if(id==='app-page'){ pg.style.display='flex'; pg.classList.add('active'); }
-  else{ pg.style.display='block'; pg.classList.add('active'); }
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
 // =================== AUTH ===================
 let pendingRegEmail = '';
 let pendingRegData = null;
+let pendingVerifyCode = '';
 
 function switchAuthTab(tab){
   document.querySelectorAll('.auth-tab').forEach((t,i)=>{
@@ -1340,33 +1364,50 @@ function doRegister(){
   db.users.push(pendingRegData);
   saveUsers(db.users);
   
+  // Gera código de 6 dígitos
+  pendingVerifyCode = String(Math.floor(100000 + Math.random() * 900000));
   document.getElementById('confirmEmailDisplay').textContent = email;
-  // Envia email de confirmação via EmailJS
-  sendConfirmationEmail(email, username);
+  sendConfirmationEmail(email, username, pendingVerifyCode);
   showPage('email-confirm-page');
 }
 
-function sendConfirmationEmail(email, username){
-  if(typeof emailjs === 'undefined') return;
+function sendConfirmationEmail(email, username, code){
+  if(typeof emailjs === 'undefined'){ 
+    console.warn('[Meloria] EmailJS não disponível');
+    return; 
+  }
   emailjs.send('service_t66b14q', 'template_etkebum', {
     to_email: email,
     to_name: username,
-    message: 'Bem-vindo ao Meloria! Sua conta foi criada com sucesso. Clique no botão "Já confirmei meu email" no site para ativar.',
-    reply_to: email,
-  }).then(()=>console.log('[Meloria] Email enviado ✅'))
+    message: 'Seu código de verificação Meloria é: ' + code + '\n\nDigite este código no site para ativar sua conta.',
+    reply_to: 'noreply@meloria.app',
+  }).then(()=>console.log('[Meloria] Código enviado ✅'))
     .catch(e=>console.warn('[Meloria] Email falhou:', e));
 }
 
 function resendConfirmEmail(){
+  pendingVerifyCode = String(Math.floor(100000 + Math.random() * 900000));
   if(pendingRegEmail) {
     const db=getDB();
     const user=db.users.find(u=>u.email===pendingRegEmail);
-    if(user) sendConfirmationEmail(pendingRegEmail, user.username);
-    toast('Email reenviado!','success');
+    if(user) sendConfirmationEmail(pendingRegEmail, user.username, pendingVerifyCode);
+    toast('Código reenviado!','success');
   }
 }
 
 function confirmEmail(){
+  const inputCode = document.getElementById('verifyCodeInput').value.trim();
+  if(!inputCode){ 
+    document.getElementById('verifyError').textContent='Digite o código.';
+    document.getElementById('verifyError').classList.remove('hidden');
+    return; 
+  }
+  if(inputCode !== pendingVerifyCode){
+    document.getElementById('verifyError').textContent='Código incorreto. Tente novamente.';
+    document.getElementById('verifyError').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('verifyError').classList.add('hidden');
   const db=getDB();
   const idx=db.users.findIndex(u=>u.email===pendingRegEmail);
   if(idx>=0){ db.users[idx].confirmed=true; saveUsers(db.users); }
@@ -2080,31 +2121,63 @@ function adminAddSong(){
   const coverFile=document.getElementById('adminSongCover').files[0];
   const audioFile=document.getElementById('adminSongAudio').files[0];
   
-  const processAdd=(coverUrl,audioUrl)=>{
+  const clipUrl = document.getElementById('adminSongClipUrl') ? document.getElementById('adminSongClipUrl').value.trim() : '';
+  
+  const doAdd = (coverUrl, audioUrl) => {
     const db=getDB();
-    const clipUrl = document.getElementById('adminSongClipUrl') ? document.getElementById('adminSongClipUrl').value.trim() : '';
-    const song={id:'song_'+Date.now(),title,artist,genre,lyrics,coverUrl,audioUrl,clipUrl:clipUrl||null,published:true,status:'approved',createdAt:Date.now()};
+    const song={id:'song_'+Date.now(),title,artist,genre,lyrics,
+      coverUrl:coverUrl||null,
+      audioUrl:audioUrl||null,
+      clipUrl:clipUrl||null,
+      published:true,status:'approved',createdAt:Date.now()};
     db.songs.push(song);
     saveSongs(db.songs);
     closeModal('modalAdminSong');
-    toast('Música adicionada e publicada! 🎵','success');
+    toast('Música adicionada! 🎵','success');
     renderAdminSection('songs');
     renderAdminSection('dashboard');
   };
-  
-  if(coverFile){
-    const fr=new FileReader();
-    fr.onload=(e)=>{
-      const coverUrl=e.target.result;
-      if(audioFile){ const fr2=new FileReader(); fr2.onload=(e2)=>processAdd(coverUrl,e2.target.result); fr2.readAsDataURL(audioFile); }
-      else processAdd(coverUrl,null);
+
+  // Comprime imagem para max 300x300 antes de salvar (evita quota do Firestore)
+  const compressImage = (file, cb) => {
+    const fr = new FileReader();
+    fr.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = Math.min(img.width, img.height, 300);
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        // Crop center
+        const sx = (img.width-size)/2, sy = (img.height-size)/2;
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, size, size);
+        cb(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.src = e.target.result;
     };
-    fr.readAsDataURL(coverFile);
-  } else if(audioFile){
-    const fr=new FileReader();
-    fr.onload=(e)=>processAdd(null,e.target.result);
+    fr.readAsDataURL(file);
+  };
+
+  // Áudio: salva como base64 apenas se for pequeno (<2MB), senão ignora
+  const processAudio = (coverUrl, cb) => {
+    if(!audioFile){ cb(coverUrl, null); return; }
+    if(audioFile.size > 2*1024*1024){
+      toast('Áudio muito grande (máx 2MB). Música salva sem áudio.','info');
+      cb(coverUrl, null);
+      return;
+    }
+    const fr = new FileReader();
+    fr.onload = e => cb(coverUrl, e.target.result);
     fr.readAsDataURL(audioFile);
-  } else processAdd(null,null);
+  };
+
+  if(coverFile){
+    compressImage(coverFile, coverUrl => {
+      processAudio(coverUrl, (c, a) => doAdd(c, a));
+    });
+  } else {
+    processAudio(null, (c, a) => doAdd(c, a));
+  }
 }
 
 function adminPublishSong(id){
