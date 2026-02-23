@@ -64,12 +64,12 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 .success-msg{color:var(--green);font-size:12px;margin-top:4px}
 
 /* ====== PAGES ====== */
-.page{display:none;min-height:100vh}
+.page{display:none}
 .page.active{display:block}
 
 /* ====== AUTH PAGES ====== */
 .auth-bg{
-  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  min-height:100vh;display:flex!important;align-items:center;justify-content:center;
   background:radial-gradient(ellipse at 30% 50%, rgba(124,58,237,.15) 0%, transparent 60%),
              radial-gradient(ellipse at 70% 20%, rgba(168,85,247,.1) 0%, transparent 50%),
              var(--black);
@@ -475,6 +475,14 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  window.addEventListener('load', function(){
+    if(typeof emailjs !== 'undefined') {
+      emailjs.init('KLixTPe6ydz9ViZuM');
+    }
+  });
+</script>
 </head>
 <body>
 
@@ -556,10 +564,11 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
     <div style="font-size:56px;margin-bottom:16px">📧</div>
     <div class="auth-logo">Confirme seu Email</div>
     <p style="color:var(--text-muted);font-size:14px;margin:12px 0 24px">
-      Enviamos um link de confirmação para <strong id="confirmEmailDisplay"></strong>.<br>
-      (Nesta demo, clique para confirmar automaticamente)
+      Enviamos um email de confirmação para <strong id="confirmEmailDisplay"></strong>.<br>
+      Verifique sua caixa de entrada e clique no link para ativar sua conta.
     </p>
-    <button class="btn btn-primary" onclick="confirmEmail()">✓ Confirmar Email (Demo)</button>
+    <button class="btn btn-primary" onclick="confirmEmail()" id="confirmBtn">✓ Já confirmei meu email</button>
+    <p style="color:var(--text-muted);font-size:12px;margin-top:12px">Não recebeu? <a href="#" style="color:var(--accent)" onclick="resendConfirmEmail()">Reenviar email</a></p>
   </div>
 </div>
 
@@ -618,6 +627,9 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
       <div class="sidebar-item" onclick="navTo('search')" id="nav-search">
         <span class="icon">🔍</span> Pesquisar
       </div>
+      <div class="sidebar-item" onclick="navTo('songs')" id="nav-songs">
+        <span class="icon">🎵</span> Músicas
+      </div>
       <div class="sidebar-item" onclick="navTo('albums')" id="nav-albums">
         <span class="icon">💿</span> Álbuns
       </div>
@@ -664,6 +676,12 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
         <div id="searchResultsArea">
           <div style="color:var(--text-muted);font-size:14px">Digite algo para buscar...</div>
         </div>
+      </div>
+
+      <!-- SONGS PAGE -->
+      <div id="view-songs" class="hidden">
+        <div class="section-title">Músicas</div>
+        <div class="music-list" id="songsPageList"></div>
       </div>
 
       <!-- ALBUMS -->
@@ -1094,6 +1112,14 @@ async function loadGlobalData(){
     _pendingSongsCache = ps;
     _pendingAlbumsCache = pa;
     console.log('[Meloria] Firebase carregado ✅', songs.length, 'músicas');
+    // Re-renderiza a home/álbuns se o usuário já estiver logado
+    if(typeof currentUser !== 'undefined' && currentUser) {
+      if(typeof currentView !== 'undefined') {
+        if(currentView==='home') renderHome();
+        if(currentView==='albums') renderAlbums();
+        if(currentView==='songs') renderSongsPage();
+      }
+    }
   } catch(e) {
     console.warn('[Meloria] Firebase offline, dados vazios', e);
     _songsCache = [];
@@ -1315,7 +1341,29 @@ function doRegister(){
   saveUsers(db.users);
   
   document.getElementById('confirmEmailDisplay').textContent = email;
+  // Envia email de confirmação via EmailJS
+  sendConfirmationEmail(email, username);
   showPage('email-confirm-page');
+}
+
+function sendConfirmationEmail(email, username){
+  if(typeof emailjs === 'undefined') return;
+  emailjs.send('service_t66b14q', 'template_etkebum', {
+    to_email: email,
+    to_name: username,
+    message: 'Bem-vindo ao Meloria! Sua conta foi criada com sucesso. Clique no botão "Já confirmei meu email" no site para ativar.',
+    reply_to: email,
+  }).then(()=>console.log('[Meloria] Email enviado ✅'))
+    .catch(e=>console.warn('[Meloria] Email falhou:', e));
+}
+
+function resendConfirmEmail(){
+  if(pendingRegEmail) {
+    const db=getDB();
+    const user=db.users.find(u=>u.email===pendingRegEmail);
+    if(user) sendConfirmationEmail(pendingRegEmail, user.username);
+    toast('Email reenviado!','success');
+  }
 }
 
 function confirmEmail(){
@@ -1366,6 +1414,7 @@ function navTo(view){
   currentView=view;
   
   if(view==='home') renderHome();
+  if(view==='songs') renderSongsPage();
   if(view==='favorites') renderFavorites();
   if(view==='playlists') renderPlaylists();
   if(view==='albums') renderAlbums();
@@ -1398,6 +1447,7 @@ function makeMusicCard(song, idx, queue){
   div.innerHTML=`
     ${coverHtml}
     <div class="music-card-actions">
+      ${song.clipUrl?`<button class="icon-btn" onclick="event.stopPropagation();openClipModal('${song.clipUrl}','${song.title}')" title="Ver Clipe">🎬</button>`:''}
       <button class="icon-btn ${faved?'faved':''}" onclick="event.stopPropagation();toggleFav('${song.id}',this)" title="Favoritar">${faved?'❤️':'🤍'}</button>
       <button class="icon-btn" onclick="event.stopPropagation();openSongMenu('${song.id}')" title="Mais opções">⋯</button>
     </div>
@@ -1478,6 +1528,7 @@ function makeMusicRow(song, idx, queue){
     </div>
     <span class="music-row-genre">${song.genre}</span>
     <div class="music-row-actions">
+      ${song.clipUrl?`<button class="icon-btn" onclick="event.stopPropagation();openClipModal('${song.clipUrl}','${song.title}')" title="Clipe">🎬</button>`:''}
       <button class="icon-btn ${faved?'faved':''}" onclick="event.stopPropagation();toggleFav('${song.id}',this)">${faved?'❤️':'🤍'}</button>
       <button class="icon-btn" onclick="event.stopPropagation();openSongMenu('${song.id}')">⋯</button>
     </div>
@@ -1645,6 +1696,20 @@ function addSongToPlaylist(plId,songId,btn){
   if(!pl) return;
   if(!pl.songs) pl.songs=[];
   if(!pl.songs.includes(songId)){ pl.songs.push(songId); saveUserData(currentUser.id,ud); btn.textContent='✓'; btn.disabled=true; toast('Adicionada à playlist','success'); }
+}
+
+// =================== SONGS PAGE ===================
+function renderSongsPage(){
+  const db=getDB();
+  const songs=db.songs.filter(s=>s.published);
+  const list=document.getElementById('songsPageList');
+  if(!list) return;
+  list.innerHTML='';
+  if(!songs.length){
+    list.innerHTML='<p style="color:var(--text-muted);padding:20px">Nenhuma música disponível.</p>';
+    return;
+  }
+  songs.forEach((s,i)=>list.appendChild(makeMusicRow(s,i,songs)));
 }
 
 // =================== ALBUMS PAGE ===================
