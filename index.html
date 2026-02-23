@@ -1093,20 +1093,13 @@ async function loadGlobalData(){
     _albumsCache = albums;
     _pendingSongsCache = ps;
     _pendingAlbumsCache = pa;
-    // Também persiste localmente como cache offline
-    localStorage.setItem('mel_songs', JSON.stringify(songs));
-    localStorage.setItem('mel_albums', JSON.stringify(albums));
-    localStorage.setItem('mel_pending_songs', JSON.stringify(ps));
-    localStorage.setItem('mel_pending_albums', JSON.stringify(pa));
-    if(bar) bar.style.display='none';
     console.log('[Meloria] Firebase carregado ✅', songs.length, 'músicas');
   } catch(e) {
-    if(bar) bar.style.display='none';
-    console.warn('[Meloria] Firebase offline, usando cache local', e);
-    _songsCache = JSON.parse(localStorage.getItem('mel_songs')||'[]');
-    _albumsCache = JSON.parse(localStorage.getItem('mel_albums')||'[]');
-    _pendingSongsCache = JSON.parse(localStorage.getItem('mel_pending_songs')||'[]');
-    _pendingAlbumsCache = JSON.parse(localStorage.getItem('mel_pending_albums')||'[]');
+    console.warn('[Meloria] Firebase offline, dados vazios', e);
+    _songsCache = [];
+    _albumsCache = [];
+    _pendingSongsCache = [];
+    _pendingAlbumsCache = [];
   }
 }
 
@@ -1114,10 +1107,10 @@ async function loadGlobalData(){
 function getDB(){
   return {
     users: JSON.parse(localStorage.getItem('mel_users')||'[]'),
-    songs: _songsCache || JSON.parse(localStorage.getItem('mel_songs')||'[]'),
-    albums: _albumsCache || JSON.parse(localStorage.getItem('mel_albums')||'[]'),
-    pending_songs: _pendingSongsCache || JSON.parse(localStorage.getItem('mel_pending_songs')||'[]'),
-    pending_albums: _pendingAlbumsCache || JSON.parse(localStorage.getItem('mel_pending_albums')||'[]'),
+    songs: _songsCache || [],
+    albums: _albumsCache || [],
+    pending_songs: _pendingSongsCache || [],
+    pending_albums: _pendingAlbumsCache || [],
   };
 }
 function saveUsers(d){localStorage.setItem('mel_users',JSON.stringify(d))}
@@ -1148,22 +1141,18 @@ async function _fbSyncCollection(colName, newData){
 
 function saveSongs(d){
   _songsCache = d;
-  localStorage.setItem('mel_songs',JSON.stringify(d));
   _fbSyncCollection('songs', d);
 }
 function saveAlbums(d){
   _albumsCache = d;
-  localStorage.setItem('mel_albums',JSON.stringify(d));
   _fbSyncCollection('albums', d);
 }
 function savePendingSongs(d){
   _pendingSongsCache = d;
-  localStorage.setItem('mel_pending_songs',JSON.stringify(d));
   _fbSyncCollection('pending_songs', d);
 }
 function savePendingAlbums(d){
   _pendingAlbumsCache = d;
-  localStorage.setItem('mel_pending_albums',JSON.stringify(d));
   _fbSyncCollection('pending_albums', d);
 }
 
