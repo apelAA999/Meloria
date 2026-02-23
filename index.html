@@ -473,8 +473,21 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
   .lyrics-panel{display:none!important}
 }
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
+
+<style>
+#fbLoadingBar {
+  position:fixed;top:0;left:0;right:0;z-index:99999;
+  height:3px;background:linear-gradient(90deg,var(--purple),var(--accent),var(--purple));
+  background-size:200% 100%;
+  animation:fbLoading 1.2s linear infinite;
+}
+@keyframes fbLoading{0%{background-position:100% 0}100%{background-position:-100% 0}}
+</style>
+<div id="fbLoadingBar"></div>
 
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toastContainer"></div>
@@ -1030,8 +1043,6 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 
 <audio id="audioPlayer"></audio>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <script>
 // =================== FIREBASE (músicas e álbuns globais) ===================
@@ -1064,6 +1075,7 @@ async function _fbDelete(col, id){
 
 // Carrega músicas/álbuns do Firebase na inicialização
 async function loadGlobalData(){
+  const bar = document.getElementById('fbLoadingBar');
   try {
     const [songs, albums, ps, pa] = await Promise.all([
       _fbGetCol('songs'), _fbGetCol('albums'),
@@ -1078,8 +1090,10 @@ async function loadGlobalData(){
     localStorage.setItem('mel_albums', JSON.stringify(albums));
     localStorage.setItem('mel_pending_songs', JSON.stringify(ps));
     localStorage.setItem('mel_pending_albums', JSON.stringify(pa));
+    if(bar) bar.style.display='none';
     console.log('[Meloria] Firebase carregado ✅', songs.length, 'músicas');
   } catch(e) {
+    if(bar) bar.style.display='none';
     console.warn('[Meloria] Firebase offline, usando cache local', e);
     _songsCache = JSON.parse(localStorage.getItem('mel_songs')||'[]');
     _albumsCache = JSON.parse(localStorage.getItem('mel_albums')||'[]');
@@ -1099,51 +1113,51 @@ function getDB(){
   };
 }
 function saveUsers(d){localStorage.setItem('mel_users',JSON.stringify(d))}
+// Sincroniza um array inteiro com uma coleção do Firebase
+// Usa batch: salva os novos/atualizados E deleta os que foram removidos
+async function _fbSyncCollection(colName, newData, oldData){
+  try {
+    const col = _db.collection(colName);
+    const batch = _db.batch();
+    // Salva/atualiza todos os documentos novos
+    newData.forEach(item => {
+      batch.set(col.doc(item.id), item);
+    });
+    // Deleta documentos que existiam antes mas foram removidos
+    const newIds = new Set(newData.map(x=>x.id));
+    (oldData||[]).forEach(item => {
+      if(!newIds.has(item.id)) batch.delete(col.doc(item.id));
+    });
+    await batch.commit();
+    console.log(`[Meloria] ${colName} sync ✅ (${newData.length} docs)`);
+  } catch(e) {
+    console.error(`[Meloria] Erro ao sincronizar ${colName}:`, e);
+  }
+}
+
 function saveSongs(d){
+  const prev = _songsCache;
   _songsCache = d;
   localStorage.setItem('mel_songs',JSON.stringify(d));
-  // Sincroniza com Firebase
-  const col = _db.collection('songs');
-  // Deleta e recria (simples para esta escala)
-  col.get().then(snap=>{
-    const batch = _db.batch();
-    snap.docs.forEach(doc=>batch.delete(doc.ref));
-    d.forEach(s=>batch.set(col.doc(s.id), s));
-    return batch.commit();
-  }).then(()=>console.log('[Meloria] songs sync ✅')).catch(e=>console.error(e));
+  _fbSyncCollection('songs', d, prev);
 }
 function saveAlbums(d){
+  const prev = _albumsCache;
   _albumsCache = d;
   localStorage.setItem('mel_albums',JSON.stringify(d));
-  const col = _db.collection('albums');
-  col.get().then(snap=>{
-    const batch = _db.batch();
-    snap.docs.forEach(doc=>batch.delete(doc.ref));
-    d.forEach(a=>batch.set(col.doc(a.id), a));
-    return batch.commit();
-  }).then(()=>console.log('[Meloria] albums sync ✅')).catch(e=>console.error(e));
+  _fbSyncCollection('albums', d, prev);
 }
 function savePendingSongs(d){
+  const prev = _pendingSongsCache;
   _pendingSongsCache = d;
   localStorage.setItem('mel_pending_songs',JSON.stringify(d));
-  const col = _db.collection('pending_songs');
-  col.get().then(snap=>{
-    const batch = _db.batch();
-    snap.docs.forEach(doc=>batch.delete(doc.ref));
-    d.forEach(s=>batch.set(col.doc(s.id), s));
-    return batch.commit();
-  }).catch(e=>console.error(e));
+  _fbSyncCollection('pending_songs', d, prev);
 }
 function savePendingAlbums(d){
+  const prev = _pendingAlbumsCache;
   _pendingAlbumsCache = d;
   localStorage.setItem('mel_pending_albums',JSON.stringify(d));
-  const col = _db.collection('pending_albums');
-  col.get().then(snap=>{
-    const batch = _db.batch();
-    snap.docs.forEach(doc=>batch.delete(doc.ref));
-    d.forEach(a=>batch.set(col.doc(a.id), a));
-    return batch.commit();
-  }).catch(e=>console.error(e));
+  _fbSyncCollection('pending_albums', d, prev);
 }
 
 function getUserData(uid){
@@ -2213,9 +2227,10 @@ function seedData(){
 // =================== INIT ===================
 (async () => {
   await loadGlobalData();
-  // Seed apenas se o Firebase estiver vazio
+  // Seed apenas se o Firebase estiver completamente vazio
   seedData();
-  // Se já estava logado via sessionStorage, redireciona
+  // Re-renderiza a home se o usuário já estiver logado
+  if(currentUser && currentView === 'home') renderHome();
 })();
 </script>
 </body>
