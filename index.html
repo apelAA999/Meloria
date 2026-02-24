@@ -1100,6 +1100,7 @@ let _songsCache = null;
 let _albumsCache = null;
 let _pendingSongsCache = null;
 let _pendingAlbumsCache = null;
+let _usersCache = null;
 
 async function _fbGetCol(col){
   if(!_fbAvailable) return JSON.parse(localStorage.getItem('mel_'+col)||'[]');
@@ -1117,15 +1118,25 @@ async function _fbDelete(col, id){
 async function loadGlobalData(){
   const bar = document.getElementById('fbLoadingBar');
   try {
-    const [songs, albums, ps, pa] = await Promise.all([
+    const [songs, albums, ps, pa, users] = await Promise.all([
       _fbGetCol('songs'), _fbGetCol('albums'),
-      _fbGetCol('pending_songs'), _fbGetCol('pending_albums')
+      _fbGetCol('pending_songs'), _fbGetCol('pending_albums'),
+      _fbGetCol('users')
     ]);
     _songsCache = songs;
     _albumsCache = albums;
     _pendingSongsCache = ps;
     _pendingAlbumsCache = pa;
-    console.log('[Meloria] Firebase carregado ✅', songs.length, 'músicas');
+    _usersCache = users;
+    // Merge com usuários locais (para não perder cadastros offline)
+    const localUsers = JSON.parse(localStorage.getItem('mel_users')||'[]');
+    localUsers.forEach(lu => {
+      if(!_usersCache.find(u=>u.id===lu.id)){
+        _usersCache.push(lu);
+        _fbSyncCollection('users', _usersCache);
+      }
+    });
+    console.log('[Meloria] Firebase carregado ✅', songs.length, 'músicas,', _usersCache.length, 'usuários');
     // Re-renderiza a home/álbuns se o usuário já estiver logado
     if(typeof currentUser !== 'undefined' && currentUser) {
       if(typeof currentView !== 'undefined') {
@@ -1140,6 +1151,7 @@ async function loadGlobalData(){
     _albumsCache = [];
     _pendingSongsCache = [];
     _pendingAlbumsCache = [];
+    _usersCache = JSON.parse(localStorage.getItem('mel_users')||'[]');
   }
 }
 
@@ -1180,14 +1192,18 @@ function hideUploadProgress(){
 // =================== DATA STORE ===================
 function getDB(){
   return {
-    users: JSON.parse(localStorage.getItem('mel_users')||'[]'),
+    users: _usersCache || JSON.parse(localStorage.getItem('mel_users')||'[]'),
     songs: _songsCache || [],
     albums: _albumsCache || [],
     pending_songs: _pendingSongsCache || [],
     pending_albums: _pendingAlbumsCache || [],
   };
 }
-function saveUsers(d){localStorage.setItem('mel_users',JSON.stringify(d))}
+function saveUsers(d){
+  _usersCache = d;
+  localStorage.setItem('mel_users',JSON.stringify(d));
+  _fbSyncCollection('users', d);
+}
 // Sincroniza um array inteiro com uma coleção do Firebase
 // Usa batch: salva os novos/atualizados E deleta os que foram removidos
 async function _fbSyncCollection(colName, newData){
@@ -1327,12 +1343,22 @@ function playSong(song, resetQueue=true){
   else{ coverEl.textContent='🎵'; }
   document.getElementById('playerTitle').textContent=song.title;
   document.getElementById('playerArtist').textContent=song.artist;
-  
-  // Update lyrics
   document.getElementById('lyricsText').textContent = song.lyrics || 'Letra não disponível para esta música.';
-  
-  // Update fav button
   updatePlayerFavBtn();
+
+  // Media Session API - controles na tela de bloqueio do celular
+  if('mediaSession' in navigator){
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.title,
+      artist: song.artist,
+      artwork: song.coverUrl ? [{ src: song.coverUrl, sizes: '512x512', type: 'image/jpeg' }] : []
+    });
+    navigator.mediaSession.setActionHandler('play', ()=>{ audio.play(); document.getElementById('playPauseBtn').textContent='⏸'; });
+    navigator.mediaSession.setActionHandler('pause', ()=>{ audio.pause(); document.getElementById('playPauseBtn').textContent='▶'; });
+    navigator.mediaSession.setActionHandler('previoustrack', ()=>prevSong());
+    navigator.mediaSession.setActionHandler('nexttrack', ()=>nextSong());
+    navigator.mediaSession.setActionHandler('seekto', (d)=>{ if(d.seekTime) audio.currentTime=d.seekTime; });
+  }
 }
 
 function playAll(songs){
@@ -2290,26 +2316,46 @@ function deleteCurrentPlaylist(){
 
 // =================== CLIP VIEWER ===================
 function openClipModal(clipUrl, title){
-  // Build YouTube embed or video element
+  // Pausa o áudio do player quando abre o clipe
+  const wasPlaying = !audio.paused;
+  audio.pause();
+  document.getElementById('playPauseBtn').textContent='▶';
+
   let content = '';
   const ytMatch = clipUrl.match(/(?:v=|youtu\.be\/)([^&\s]+)/);
   if(ytMatch){
-    content = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1" frameborder="0" allowfullscreen allow="autoplay"></iframe>`;
+    content = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1" frameborder="0" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
   } else {
-    content = `<video src="${clipUrl}" controls autoplay style="width:100%;height:100%"></video>`;
+    content = `<video src="${clipUrl}" controls autoplay style="width:100%;height:100%;border-radius:12px"></video>`;
   }
-  // Create a quick modal
+
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+  overlay.id = 'clipOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:2000;display:flex;flex-direction:column';
+
   overlay.innerHTML = `
-    <div style="width:100%;max-width:720px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700">🎬 ${title}</div>
-        <button onclick="this.closest('div[style]').remove()" style="background:none;border:none;cursor:pointer;color:#fff;font-size:24px">✕</button>
-      </div>
-      <div style="width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden">${content}</div>
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;flex-shrink:0">
+      <button id="clipBackBtn" style="background:rgba(255,255,255,.1);border:none;cursor:pointer;color:#fff;font-size:20px;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">←</button>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff">🎬 ${title}</div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:0 20px 20px">
+      <div style="width:100%;max-width:900px;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden">${content}</div>
     </div>`;
+
   document.body.appendChild(overlay);
+
+  // Botão voltar - fecha o clipe e retoma música se estava tocando
+  document.getElementById('clipBackBtn').onclick = () => {
+    overlay.remove();
+    if(wasPlaying && currentSong && currentSong.audioUrl){
+      audio.play();
+      document.getElementById('playPauseBtn').textContent='⏸';
+    }
+  };
+
+  // Fechar com ESC
+  const escHandler = (e) => { if(e.key==='Escape'){ overlay.remove(); if(wasPlaying && currentSong && currentSong.audioUrl){ audio.play(); document.getElementById('playPauseBtn').textContent='⏸'; } document.removeEventListener('keydown', escHandler); } };
+  document.addEventListener('keydown', escHandler);
 }
 
 // =================== LYRICS ===================
