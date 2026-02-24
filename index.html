@@ -468,6 +468,8 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 .dropdown-item:hover{background:var(--card2);color:var(--text)}
 .dropdown-divider{height:1px;background:var(--border);margin:4px 0}
 
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* ====== RESPONSIVE ====== */
 @media(max-width:768px){
   .sidebar{width:0;overflow:hidden;position:fixed;z-index:50;height:calc(100vh - 64px - 80px)}
@@ -1141,6 +1143,40 @@ async function loadGlobalData(){
   }
 }
 
+// =================== CLOUDINARY UPLOAD ===================
+const CLOUDINARY_CLOUD = 'diegmiqfo';
+const CLOUDINARY_PRESET = 'diegmiqfo';
+
+async function uploadToCloudinary(file, type='image'){
+  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${type}/upload`;
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', CLOUDINARY_PRESET);
+  fd.append('folder', 'Meloria');
+  
+  const res = await fetch(url, { method:'POST', body:fd });
+  if(!res.ok) throw new Error('Cloudinary upload falhou: ' + res.status);
+  const data = await res.json();
+  return data.secure_url;
+}
+
+function showUploadProgress(msg){
+  let bar = document.getElementById('uploadProgressToast');
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'uploadProgressToast';
+    bar.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--purple);border-radius:12px;padding:16px 24px;z-index:9999;font-size:14px;color:var(--accent);display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.5)';
+    bar.innerHTML = '<div style="width:18px;height:18px;border:2px solid var(--purple);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div><span id="uploadProgressMsg"></span>';
+    document.body.appendChild(bar);
+  }
+  document.getElementById('uploadProgressMsg').textContent = msg;
+  bar.style.display = 'flex';
+}
+function hideUploadProgress(){
+  const bar = document.getElementById('uploadProgressToast');
+  if(bar) bar.style.display = 'none';
+}
+
 // =================== DATA STORE ===================
 function getDB(){
   return {
@@ -1379,7 +1415,7 @@ function sendConfirmationEmail(email, username, code){
   emailjs.send('service_t66b14q', 'template_etkebum', {
     to_email: email,
     to_name: username,
-    message: 'Seu código de verificação Meloria é: ' + code + '\n\nDigite este código no site para ativar sua conta.',
+    confirm_code: code,
     reply_to: 'noreply@meloria.app',
   }).then(()=>console.log('[Meloria] Código enviado ✅'))
     .catch(e=>console.warn('[Meloria] Email falhou:', e));
@@ -1886,50 +1922,46 @@ function submitSong(){
   
   const coverFile=document.getElementById('upCover').files[0];
   const audioFile=document.getElementById('upAudio').files[0];
-  
   const clipUrl = document.getElementById('upClipUrl') ? document.getElementById('upClipUrl').value.trim() : '';
-  const processSubmit=(coverUrl,audioUrl)=>{
-    const song={
-      id:'song_'+Date.now(),title,artist,genre,lyrics,
-      coverUrl:coverUrl||null, audioUrl:audioUrl||null,
-      clipUrl: clipUrl||null,
-      creatorId:currentUser.id, creatorName:currentUser.username,
-      published:false, status:'pending',
-      createdAt:Date.now()
-    };
-    
-    if(currentUser.isVerifiedCreator){
-      song.published=true; song.status='approved';
-      const db=getDB(); db.songs.push(song); saveSongs(db.songs);
-      toast('Música publicada automaticamente! ✅','success');
-    } else {
-      const db=getDB();
-      if(!db.pending_songs) db.pending_songs=[];
-      db.pending_songs.push(song);
-      savePendingSongs(db.pending_songs);
-      toast('Música enviada para aprovação! ⏳','info');
-    }
-    // Reset form
-    ['upTitle','upArtist','upLyrics','upClipUrl'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    document.getElementById('upGenre').value='';
-  };
-  
-  if(coverFile){
-    const fr=new FileReader();
-    fr.onload=(e)=>{
-      const coverUrl=e.target.result;
+
+  (async () => {
+    try {
+      let coverUrl = null, audioUrl = null;
+      if(coverFile){
+        showUploadProgress('Enviando capa... 🖼️');
+        coverUrl = await uploadToCloudinary(coverFile, 'image');
+      }
       if(audioFile){
-        const fr2=new FileReader();
-        fr2.onload=(e2)=>processSubmit(coverUrl,e2.target.result);
-        fr2.readAsDataURL(audioFile);
-      } else { processSubmit(coverUrl,null); }
-    };
-    fr.readAsDataURL(coverFile);
-  } else if(audioFile){
-    const fr=new FileReader();
-    fr.onload=(e)=>processSubmit(null,e.target.result);
-    fr.readAsDataURL(audioFile);
-  } else { processSubmit(null,null); }
+        showUploadProgress('Enviando áudio... 🎵 (pode demorar)');
+        audioUrl = await uploadToCloudinary(audioFile, 'video'); // Cloudinary usa 'video' para audio
+      }
+      hideUploadProgress();
+
+      const song={
+        id:'song_'+Date.now(),title,artist,genre,lyrics,
+        coverUrl:coverUrl||null, audioUrl:audioUrl||null,
+        clipUrl:clipUrl||null,
+        creatorId:currentUser.id, creatorName:currentUser.username,
+        published:false, status:'pending',
+        createdAt:Date.now()
+      };
+      if(currentUser.isVerifiedCreator){
+        song.published=true; song.status='approved';
+        const db=getDB(); db.songs.push(song); saveSongs(db.songs);
+        toast('Música publicada! ✅','success');
+      } else {
+        const db=getDB();
+        db.pending_songs.push(song);
+        savePendingSongs(db.pending_songs);
+        toast('Música enviada para aprovação! ⏳','info');
+      }
+      ['upTitle','upArtist','upLyrics','upClipUrl'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+      document.getElementById('upGenre').value='';
+    } catch(e) {
+      hideUploadProgress();
+      toast('Erro no upload: ' + e.message,'error');
+    }
+  })();
 }
 
 let adminAlbumTrackCount=0;
@@ -2120,64 +2152,40 @@ function adminAddSong(){
   
   const coverFile=document.getElementById('adminSongCover').files[0];
   const audioFile=document.getElementById('adminSongAudio').files[0];
-  
   const clipUrl = document.getElementById('adminSongClipUrl') ? document.getElementById('adminSongClipUrl').value.trim() : '';
-  
-  const doAdd = (coverUrl, audioUrl) => {
-    const db=getDB();
-    const song={id:'song_'+Date.now(),title,artist,genre,lyrics,
-      coverUrl:coverUrl||null,
-      audioUrl:audioUrl||null,
-      clipUrl:clipUrl||null,
-      published:true,status:'approved',createdAt:Date.now()};
-    db.songs.push(song);
-    saveSongs(db.songs);
-    closeModal('modalAdminSong');
-    toast('Música adicionada! 🎵','success');
-    renderAdminSection('songs');
-    renderAdminSection('dashboard');
-  };
 
-  // Comprime imagem para max 300x300 antes de salvar (evita quota do Firestore)
-  const compressImage = (file, cb) => {
-    const fr = new FileReader();
-    fr.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const size = Math.min(img.width, img.height, 300);
-        canvas.width = size; canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        // Crop center
-        const sx = (img.width-size)/2, sy = (img.height-size)/2;
-        ctx.drawImage(img, sx, sy, size, size, 0, 0, size, size);
-        cb(canvas.toDataURL('image/jpeg', 0.7));
+  (async () => {
+    try {
+      let coverUrl = null, audioUrl = null;
+      if(coverFile){
+        showUploadProgress('Enviando capa... 🖼️');
+        coverUrl = await uploadToCloudinary(coverFile, 'image');
+      }
+      if(audioFile){
+        showUploadProgress('Enviando áudio... 🎵 (pode demorar)');
+        audioUrl = await uploadToCloudinary(audioFile, 'video');
+      }
+      hideUploadProgress();
+
+      const db=getDB();
+      const song={
+        id:'song_'+Date.now(),title,artist,genre,lyrics,
+        coverUrl:coverUrl||null,
+        audioUrl:audioUrl||null,
+        clipUrl:clipUrl||null,
+        published:true,status:'approved',createdAt:Date.now()
       };
-      img.src = e.target.result;
-    };
-    fr.readAsDataURL(file);
-  };
-
-  // Áudio: salva como base64 apenas se for pequeno (<2MB), senão ignora
-  const processAudio = (coverUrl, cb) => {
-    if(!audioFile){ cb(coverUrl, null); return; }
-    if(audioFile.size > 2*1024*1024){
-      toast('Áudio muito grande (máx 2MB). Música salva sem áudio.','info');
-      cb(coverUrl, null);
-      return;
+      db.songs.push(song);
+      saveSongs(db.songs);
+      closeModal('modalAdminSong');
+      toast('Música adicionada! 🎵','success');
+      renderAdminSection('songs');
+      renderAdminSection('dashboard');
+    } catch(e) {
+      hideUploadProgress();
+      toast('Erro no upload: ' + e.message,'error');
     }
-    const fr = new FileReader();
-    fr.onload = e => cb(coverUrl, e.target.result);
-    fr.readAsDataURL(audioFile);
-  };
-
-  if(coverFile){
-    compressImage(coverFile, coverUrl => {
-      processAudio(coverUrl, (c, a) => doAdd(c, a));
-    });
-  } else {
-    processAudio(null, (c, a) => doAdd(c, a));
-  }
+  })();
 }
 
 function adminPublishSong(id){
@@ -2221,8 +2229,20 @@ function adminAddAlbum(){
     renderAdminSection('albums');
   };
   
-  if(coverFile){ const fr=new FileReader(); fr.onload=(e)=>processAdd(e.target.result); fr.readAsDataURL(coverFile); }
-  else processAdd(null);
+  (async () => {
+    try {
+      let coverUrl = null;
+      if(coverFile){
+        showUploadProgress('Enviando capa do álbum... 🖼️');
+        coverUrl = await uploadToCloudinary(coverFile, 'image');
+        hideUploadProgress();
+      }
+      processAdd(coverUrl);
+    } catch(e) {
+      hideUploadProgress();
+      toast('Erro no upload: ' + e.message,'error');
+    }
+  })();
 }
 
 function adminPublishAlbum(id){
