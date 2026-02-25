@@ -1992,8 +1992,8 @@ function openSongMenu(songId){
     {icon:'📋', label:'Adicionar a Playlist...', fn:`addToAnyPlaylist('${songId}')`},
   ];
   if(song && song.audioUrl){
-    const dlLabel = isDownloaded(song.id) ? 'Remover Download' : 'Baixar Música';
-    const dlIcon = isDownloaded(song.id) ? '🗑' : '⬇️';
+    const dlLabel = isLocallyDownloaded(song.id) ? 'Remover Download' : 'Baixar Música';
+    const dlIcon = isLocallyDownloaded(song.id) ? '🗑' : '⬇️';
     actions.push({icon:dlIcon, label:dlLabel, fn:`downloadSongToDevice('${songId}')`});
   }
   if(song && song.clipUrl){
