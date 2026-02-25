@@ -65,13 +65,13 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 
 /* ====== PAGES ====== */
 /* Todas as páginas ficam escondidas por padrão */
-.page{display:none!important;position:fixed;inset:0}
+.page{display:none!important}
 /* Páginas de auth - centraliza o conteúdo */
-.auth-bg.page.active{display:flex!important;align-items:center;justify-content:center}
+.auth-bg.page.active{display:flex!important;align-items:center;justify-content:center;min-height:100vh}
 /* App principal - coluna com header+body+player */
-#app-page.page.active{display:flex!important;flex-direction:column}
+#app-page.page.active{display:flex!important;flex-direction:column;height:100vh;overflow:hidden}
 /* Admin - linha com sidebar+content */
-#admin-page.page.active{display:flex!important}
+#admin-page.page.active{display:flex!important;min-height:100vh}
 
 /* ====== AUTH PAGES ====== */
 .auth-bg{
@@ -149,9 +149,13 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
   flex-shrink:0;
 }
 .verified-badge{
-  display:inline-flex;align-items:center;gap:3px;
+  display:inline-flex;align-items:center;gap:2px;
   background:linear-gradient(135deg,#7c3aed,#a855f7);
-  color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600;
+  color:#fff;font-size:9px;padding:2px 5px;border-radius:10px;font-weight:700;
+  vertical-align:middle;
+}
+.verified-artist-name{
+  display:inline-flex;align-items:center;gap:4px;
 }
 
 .app-body{display:flex;flex:1;overflow:hidden}
@@ -471,10 +475,14 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ====== RESPONSIVE ====== */
+#hamburgerBtn{display:none}
 @media(max-width:768px){
-  .sidebar{width:0;overflow:hidden;position:fixed;z-index:50;height:calc(100vh - 64px - 80px)}
-  .sidebar.open{width:220px}
-  .player-track{width:160px}
+  #hamburgerBtn{display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;color:var(--text);font-size:22px;padding:8px;border-radius:8px;margin-right:4px}
+  .sidebar{width:0;overflow:hidden;position:fixed;z-index:100;top:64px;bottom:80px;left:0;background:var(--dark);border-right:1px solid var(--border);transition:width .25s ease}
+  .sidebar.open{width:240px;box-shadow:4px 0 20px rgba(0,0,0,.5)}
+  #sidebarOverlay{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.5)}
+  #sidebarOverlay.open{display:block}
+  .player-track{width:140px}
   .lyrics-panel{display:none!important}
 }
 </style>
@@ -553,8 +561,13 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
           <option value="creator">Criador de Música</option>
         </select>
       </div>
-      <div id="creatorNote" class="creator-note hidden">
-        🎙️ Como criador, você poderá enviar músicas e álbuns para aprovação da equipe Meloria.
+      <div id="creatorNote" class="creator-note hidden" style="padding:12px">
+        🎙️ Como criador, você poderá enviar músicas e álbuns.<br>
+        <div class="form-group" style="margin-top:10px;margin-bottom:0">
+          <label style="color:var(--text)">Nome artístico único</label>
+          <input type="text" id="regArtisticName" placeholder="Ex: MC Menor da VG" style="margin-top:4px">
+          <div class="error-msg hidden" id="artisticNameError"></div>
+        </div>
       </div>
       <div class="error-msg hidden" id="regError"></div>
       <div class="success-msg hidden" id="regSuccess"></div>
@@ -667,6 +680,7 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
         <span class="icon">⬆️</span> Enviar Música
       </div>
     </nav>
+    <div id="sidebarOverlay" onclick="closeSidebar()"></div>
 
     <!-- MAIN -->
     <main class="main-content" id="mainContent">
@@ -1342,7 +1356,9 @@ function playSong(song, resetQueue=true){
   if(song.coverUrl){ coverEl.innerHTML=`<img src="${song.coverUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`; }
   else{ coverEl.textContent='🎵'; }
   document.getElementById('playerTitle').textContent=song.title;
-  document.getElementById('playerArtist').textContent=song.artist;
+  const cr=getDB().users.find(u=>(u.artisticName&&u.artisticName===song.artist)||u.username===song.artist);
+  const vBadge=(cr&&cr.isVerifiedCreator)?'<span class="verified-badge" style="margin-left:4px">✓</span>':'';
+  document.getElementById('playerArtist').innerHTML=song.artist+vBadge;
   document.getElementById('lyricsText').textContent = song.lyrics || 'Letra não disponível para esta música.';
   updatePlayerFavBtn();
 
@@ -1414,10 +1430,20 @@ function doRegister(){
   if(db.users.find(u=>u.email===email)){ showError('regError','Email já cadastrado.'); return; }
   if(db.users.find(u=>u.username===username)){ showError('regError','Nome de usuário já em uso.'); return; }
   
+  let artisticName = '';
+  if(type === 'creator'){
+    artisticName = document.getElementById('regArtisticName').value.trim();
+    if(!artisticName){ showError('regError','Criadores precisam definir um nome artístico.'); return; }
+    if(db.users.find(u=>u.artisticName&&u.artisticName.toLowerCase()===artisticName.toLowerCase())){ 
+      showError('regError','Este nome artístico já está em uso.'); return; 
+    }
+  }
+
   pendingRegData = {
     id: 'user_'+Date.now(),
     username, email, password:pass,
     type, confirmed:false,
+    artisticName: artisticName||null,
     isVerifiedCreator: false,
     createdAt: Date.now()
   };
@@ -1490,9 +1516,10 @@ function loadApp(){
   
   const badge=document.getElementById('profileBadge');
   if(currentUser.type==='creator'){
-    badge.innerHTML=currentUser.isVerifiedCreator
-      ?'<span class="verified-badge">✅ Criador Verificado</span>'
-      :'<span class="badge badge-purple">🎙️ Criador</span>';
+    const name = currentUser.artisticName ? `<span style="color:var(--accent);font-size:12px">🎙️ ${currentUser.artisticName}</span>` : '';
+    badge.innerHTML = currentUser.isVerifiedCreator
+      ? `${name} <span class="verified-badge" style="margin-left:4px">✓ Verificado</span>`
+      : `${name}`;
   } else { badge.innerHTML=''; }
   
   // Show/hide creator nav
@@ -1505,9 +1532,20 @@ function loadApp(){
   navTo('home');
 }
 
+// =================== SIDEBAR MOBILE ===================
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
 // =================== NAVIGATION ===================
 let currentView='home';
 function navTo(view){
+  closeSidebar();
   document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
   const el=document.getElementById('view-'+view);
   if(el) el.classList.remove('hidden');
@@ -1555,7 +1593,7 @@ function makeMusicCard(song, idx, queue){
       <button class="icon-btn" onclick="event.stopPropagation();openSongMenu('${song.id}')" title="Mais opções">⋯</button>
     </div>
     <div class="music-card-title">${song.title}</div>
-    <div class="music-card-artist">${song.artist}</div>
+    <div class="music-card-artist">${(()=>{const db2=getDB();const cr=db2.users.find(u=>(u.artisticName&&u.artisticName===song.artist)||u.username===song.artist);const badge=(cr&&cr.isVerifiedCreator)?'<span class="verified-badge">✓</span>':'';return `${song.artist} ${badge}`;})()}</div>
   `;
   div.onclick=()=>{ songQueue=[...queue]; queueIdx=idx; playSong(song,false); };
   return div;
@@ -1609,9 +1647,13 @@ function getAlbumSongs(albumId){
   const album=db.albums.find(a=>a.id===albumId);
   if(!album||!album.tracks) return [];
   return album.tracks.map(t=>{
-    const song=db.songs.find(s=>s.id===t.songId);
-    return song||{id:t.songId,title:t.title||'?',artist:album.artist,genre:album.genre};
-  }).filter(Boolean);
+    // Busca por ID primeiro, depois por título (case-insensitive)
+    const song = db.songs.find(s=>s.id===t.songId) 
+               || db.songs.find(s=>s.title.toLowerCase()===( t.title||'').toLowerCase());
+    if(song) return song;
+    // Retorna stub com dados do álbum para exibir na lista mesmo sem áudio
+    return {id:t.songId||('track_'+Date.now()+Math.random()),title:t.title||'Faixa',artist:album.artist,genre:album.genre,coverUrl:album.coverUrl||null,audioUrl:null};
+  });
 }
 
 function makeMusicRow(song, idx, queue){
@@ -1627,7 +1669,7 @@ function makeMusicRow(song, idx, queue){
     <div class="music-row-thumb">${thumbHtml}</div>
     <div class="music-row-info">
       <div class="music-row-title">${song.title}</div>
-      <div class="music-row-artist">${song.artist}</div>
+      <div class="music-row-artist">${(()=>{const db2=getDB();const cr=db2.users.find(u=>(u.artisticName&&u.artisticName===song.artist)||u.username===song.artist);const badge=(cr&&cr.isVerifiedCreator)?'<span class="verified-badge">✓</span>':'';return `${song.artist} ${badge}`;})()}</div>
     </div>
     <span class="music-row-genre">${song.genre}</span>
     <div class="music-row-actions">
@@ -1967,7 +2009,7 @@ function submitSong(){
         id:'song_'+Date.now(),title,artist,genre,lyrics,
         coverUrl:coverUrl||null, audioUrl:audioUrl||null,
         clipUrl:clipUrl||null,
-        creatorId:currentUser.id, creatorName:currentUser.username,
+        creatorId:currentUser.id, creatorName:currentUser.artisticName||currentUser.username,
         published:false, status:'pending',
         createdAt:Date.now()
       };
@@ -2237,36 +2279,61 @@ function adminAddAlbum(){
   const artist=document.getElementById('adminAlbumArtist').value.trim();
   const genre=document.getElementById('adminAlbumGenre').value;
   if(!title||!artist||!genre){ toast('Preencha os campos obrigatórios','error'); return; }
-  
-  const tracks=[];
-  for(let i=1;i<=adminAlbumTrackCount;i++){
-    const t=document.getElementById(`aat_title_${i}`);
-    if(t&&t.value.trim()) tracks.push({songId:'song_'+Date.now()+'_'+i, title:t.value.trim()});
-  }
-  
-  const coverFile=document.getElementById('adminAlbumCover').files[0];
-  const processAdd=(coverUrl)=>{
-    const db=getDB();
-    const album={id:'album_'+Date.now(),title,artist,genre,coverUrl,tracks,published:true,createdAt:Date.now()};
-    db.albums.push(album);
-    saveAlbums(db.albums);
-    closeModal('modalAdminAlbum');
-    toast('Álbum publicado! 💿','success');
-    renderAdminSection('albums');
-  };
-  
+
   (async () => {
     try {
+      // Upload capa do álbum
       let coverUrl = null;
+      const coverFile=document.getElementById('adminAlbumCover').files[0];
       if(coverFile){
         showUploadProgress('Enviando capa do álbum... 🖼️');
         coverUrl = await uploadToCloudinary(coverFile, 'image');
-        hideUploadProgress();
       }
-      processAdd(coverUrl);
+
+      // Upload cada faixa
+      const db = getDB();
+      const tracks = [];
+      const newSongs = [];
+      for(let i=1;i<=adminAlbumTrackCount;i++){
+        const titleEl = document.getElementById(`aat_title_${i}`);
+        const audioEl = document.getElementById(`aat_audio_${i}`);
+        if(!titleEl||!titleEl.value.trim()) continue;
+        const trackTitle = titleEl.value.trim();
+        let audioUrl = null;
+        if(audioEl && audioEl.files[0]){
+          showUploadProgress(`Enviando faixa ${i}: ${trackTitle}... 🎵`);
+          audioUrl = await uploadToCloudinary(audioEl.files[0], 'video');
+        }
+        const songId = 'song_album_'+Date.now()+'_'+i;
+        // Cria a música no banco também para poder tocar
+        const song = {
+          id: songId, title: trackTitle, artist, genre,
+          coverUrl: coverUrl||null, audioUrl: audioUrl||null,
+          published: true, status: 'approved', createdAt: Date.now()
+        };
+        newSongs.push(song);
+        tracks.push({songId, title: trackTitle});
+      }
+
+      hideUploadProgress();
+
+      // Salva as músicas das faixas
+      if(newSongs.length){
+        db.songs.push(...newSongs);
+        saveSongs(db.songs);
+      }
+
+      // Salva o álbum
+      const album={id:'album_'+Date.now(),title,artist,genre,coverUrl,tracks,published:true,createdAt:Date.now()};
+      db.albums.push(album);
+      saveAlbums(db.albums);
+      closeModal('modalAdminAlbum');
+      toast('Álbum publicado com '+tracks.length+' faixas! 💿','success');
+      renderAdminSection('albums');
+      renderAdminSection('dashboard');
     } catch(e) {
       hideUploadProgress();
-      toast('Erro no upload: ' + e.message,'error');
+      toast('Erro: ' + e.message,'error');
     }
   })();
 }
