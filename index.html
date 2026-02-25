@@ -474,6 +474,33 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ====== DOWNLOADS ====== */
+.download-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);
+  color:var(--accent);border-radius:8px;padding:4px 10px;font-size:12px;
+  cursor:pointer;transition:all .2s;
+}
+.download-btn:hover{background:rgba(124,58,237,.3);}
+.download-btn.downloaded{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.3);color:#4ade80;}
+.download-progress{
+  position:fixed;bottom:100px;right:16px;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:12px 16px;z-index:500;font-size:13px;min-width:220px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+}
+.download-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px;background:var(--card2);border-radius:8px;margin-bottom:8px;
+}
+.download-item-cover{
+  width:44px;height:44px;border-radius:6px;flex-shrink:0;
+  background:var(--dark);display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.download-section-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;
+}
+
 /* ====== RESPONSIVE ====== */
 #hamburgerBtn{display:none}
 @media(max-width:768px){
@@ -669,6 +696,9 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
       <div class="sidebar-item" onclick="navTo('playlists')" id="nav-playlists">
         <span class="icon">📋</span> Playlists
       </div>
+      <div class="sidebar-item" onclick="navTo('downloads')" id="nav-downloads">
+        <span class="icon">⬇️</span> Downloads
+      </div>
 
       <div class="sidebar-section-title">Playlists</div>
       <div id="sidebarPlaylists"></div>
@@ -742,6 +772,39 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
       <div id="view-playlists" class="hidden">
         <div class="section-title">Suas Playlists</div>
         <div class="music-grid" id="playlistsGrid"></div>
+      </div>
+
+      <!-- DOWNLOADS -->
+      <div id="view-downloads" class="hidden">
+        <div class="section-title">Downloads</div>
+        
+        <!-- Playlists offline -->
+        <div class="download-section-header">
+          <h3 style="font-size:15px;color:var(--text-muted)">Playlists Offline</h3>
+          <button class="btn btn-primary btn-sm" onclick="openCreateDownloadPlaylist()">➕ Nova Playlist</button>
+        </div>
+        <div class="music-grid" id="downloadPlaylistsGrid"></div>
+        
+        <div style="height:1px;background:var(--border);margin:20px 0"></div>
+        
+        <!-- Músicas baixadas soltas -->
+        <div class="download-section-header">
+          <h3 style="font-size:15px;color:var(--text-muted)">Músicas Baixadas</h3>
+          <span id="downloadCount" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+        <div class="music-list" id="downloadsGrid"></div>
+      </div>
+
+      <!-- DOWNLOAD PLAYLIST DETAIL -->
+      <div id="view-download-playlist-detail" class="hidden">
+        <div class="playlist-header" id="dlPlaylistDetailHeader"></div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="playAllDownloadPlaylist()">▶ Reproduzir</button>
+          <button class="btn btn-ghost btn-sm" onclick="openAddToDownloadPlaylist(currentDlPlaylistId)" style="color:var(--accent)">➕ Adicionar</button>
+          <button class="btn btn-ghost btn-sm" onclick="renameDownloadPlaylist()" style="color:var(--accent)">✏️ Renomear</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteDownloadPlaylist()" style="color:var(--red)">🗑 Excluir</button>
+        </div>
+        <div class="music-list" id="dlPlaylistDetailList"></div>
       </div>
 
       <!-- PLAYLIST DETAIL -->
@@ -1535,6 +1598,11 @@ function loadApp(){
   renderHome();
   renderSidebarPlaylists();
   navTo('home');
+  // Sincroniza downloads e playlists offline do Firebase
+  (async()=>{
+    await syncDownloadsFromFirebase(currentUser.id);
+    await syncDlPlaylistsFromFirebase(currentUser.id);
+  })();
 }
 
 // =================== SIDEBAR MOBILE ===================
@@ -1564,6 +1632,7 @@ function navTo(view){
   if(view==='favorites') renderFavorites();
   if(view==='playlists') renderPlaylists();
   if(view==='albums') renderAlbums();
+  if(view==='downloads') renderDownloads();
   if(view==='upload') setupUploadPage();
   // Garante nome artístico no campo ao abrir upload
 }
@@ -1617,6 +1686,13 @@ function makeAlbumCard(album){
     <div class="music-card-artist">${album.artist} · ${album.tracks?album.tracks.length:0} faixas</div>
   `;
   div.onclick=()=>openAlbum(album.id);
+  // Botão baixar álbum
+  const dlAlbumBtn = document.createElement('button');
+  dlAlbumBtn.className = 'download-btn';
+  dlAlbumBtn.style.cssText = 'margin:4px 8px 8px;width:calc(100% - 16px)';
+  dlAlbumBtn.textContent = '⬇ Baixar Álbum';
+  dlAlbumBtn.onclick = (e) => { e.stopPropagation(); downloadAlbum(album.id); };
+  div.appendChild(dlAlbumBtn);
   return div;
 }
 
@@ -1639,6 +1715,7 @@ function openAlbum(albumId){
       <h1>${album.title}</h1>
       <p>${album.artist} · ${album.tracks?album.tracks.length:0} faixas · ${album.genre}</p>
       <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="playAll(getAlbumSongs('${album.id}'))">▶ Reproduzir</button>
+      <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="downloadAlbum('${album.id}')">⬇️ Baixar Álbum</button>
     </div>
   `;
   
@@ -1680,6 +1757,7 @@ function makeMusicRow(song, idx, queue){
     <span class="music-row-genre">${song.genre}</span>
     <div class="music-row-actions">
       ${song.clipUrl?`<button class="icon-btn" onclick="event.stopPropagation();openClipModal('${song.clipUrl}','${song.title}')" title="Clipe">🎬</button>`:''}
+      ${song.audioUrl?`<button class="icon-btn download-btn ${isDownloaded(song.id)?'downloaded':''}" onclick="event.stopPropagation();downloadSong('${song.id}')" title="${isDownloaded(song.id)?'Baixado':'Baixar'}">${isDownloaded(song.id)?'✓':'⬇'}</button>`:''}
       <button class="icon-btn ${faved?'faved':''}" onclick="event.stopPropagation();toggleFav('${song.id}',this)">${faved?'❤️':'🤍'}</button>
       <button class="icon-btn" onclick="event.stopPropagation();openSongMenu('${song.id}')">⋯</button>
     </div>
@@ -1913,6 +1991,11 @@ function openSongMenu(songId){
     {icon:'▶', label:'Reproduzir', fn:`playSongById('${songId}')`},
     {icon:'📋', label:'Adicionar a Playlist...', fn:`addToAnyPlaylist('${songId}')`},
   ];
+  if(song && song.audioUrl){
+    const dlLabel = isDownloaded(song.id) ? 'Remover Download' : 'Baixar Música';
+    const dlIcon = isDownloaded(song.id) ? '🗑' : '⬇️';
+    actions.push({icon:dlIcon, label:dlLabel, fn:`downloadSong('${songId}')`});
+  }
   if(song && song.clipUrl){
     actions.push({icon:'🎬', label:'Assistir Clipe', fn:`openClipModal('${song.clipUrl.replace(/'/g,"\\'")}','${song.title.replace(/'/g,"\\'")}')` });
   }
@@ -2364,6 +2447,282 @@ function adminDeleteAlbum(id){
   const db=getDB();
   const idx=db.albums.findIndex(a=>a.id===id);
   if(idx>=0){ db.albums.splice(idx,1); saveAlbums(db.albums); renderAdminSection('albums'); toast('Álbum removido','info'); }
+}
+
+// =================== DOWNLOADS ===================
+// Downloads ficam no localStorage por usuário (são arquivos locais)
+// Downloads: lista sincronizada no Firebase + flag local se o áudio está cacheado
+function getDownloads(uid){
+  // Tenta pegar do cache em memória primeiro, depois localStorage como fallback
+  return JSON.parse(localStorage.getItem('mel_dl_'+uid)||'{}');
+}
+function saveDownloads(uid, data){
+  localStorage.setItem('mel_dl_'+uid, JSON.stringify(data));
+  // Sincroniza com Firebase para aparecer em outros dispositivos
+  if(_fbAvailable && _db){
+    _db.collection('user_downloads').doc(uid).set({downloads: data})
+      .then(()=>console.log('[Meloria] Downloads sync ✅'))
+      .catch(e=>console.warn('[Meloria] Downloads sync falhou:', e));
+  }
+}
+function isDownloaded(songId){
+  if(!currentUser) return false;
+  const dl = getDownloads(currentUser.id);
+  return !!dl[songId];
+}
+async function syncDownloadsFromFirebase(uid){
+  if(!_fbAvailable || !_db) return;
+  try {
+    const doc = await _db.collection('user_downloads').doc(uid).get();
+    if(doc.exists){
+      const data = doc.data().downloads || {};
+      localStorage.setItem('mel_dl_'+uid, JSON.stringify(data));
+      console.log('[Meloria] Downloads carregados do Firebase:', Object.keys(data).length);
+    }
+  } catch(e){
+    console.warn('[Meloria] Não foi possível carregar downloads:', e);
+  }
+}
+
+async function downloadSong(songId){
+  if(!currentUser){ toast('Faça login para baixar músicas','error'); return; }
+  const dl = getDownloads(currentUser.id);
+  
+  // Se já baixado, remove
+  if(dl[songId]){
+    delete dl[songId];
+    saveDownloads(currentUser.id, dl);
+    toast('Download removido','info');
+    if(typeof currentView !== 'undefined' && currentView === 'downloads') renderDownloads();
+    return;
+  }
+
+  const db = getDB();
+  const song = db.songs.find(s=>s.id===songId);
+  if(!song){ toast('Música não encontrada','error'); return; }
+  if(!song.audioUrl){ toast('Esta música não tem áudio disponível','info'); return; }
+
+  // Salva os metadados da música localmente (a URL do áudio é do Cloudinary)
+  dl[songId] = {
+    id: song.id, title: song.title, artist: song.artist,
+    genre: song.genre, coverUrl: song.coverUrl||null,
+    audioUrl: song.audioUrl, lyrics: song.lyrics||null,
+    downloadedAt: Date.now()
+  };
+  saveDownloads(currentUser.id, dl);
+  toast(`"${song.title}" salvo nos Downloads! ⬇️`,'success');
+  if(typeof currentView !== 'undefined' && currentView === 'downloads') renderDownloads();
+}
+
+async function downloadAlbum(albumId){
+  if(!currentUser){ toast('Faça login para baixar','error'); return; }
+  const db = getDB();
+  const album = db.albums.find(a=>a.id===albumId);
+  if(!album){ toast('Álbum não encontrado','error'); return; }
+  const songs = getAlbumSongs(albumId).filter(s=>s.audioUrl);
+  if(!songs.length){ toast('Este álbum não tem faixas com áudio','info'); return; }
+  
+  const dl = getDownloads(currentUser.id);
+  let added = 0;
+  songs.forEach(song => {
+    if(!dl[song.id]){
+      dl[song.id] = {
+        id:song.id, title:song.title, artist:song.artist,
+        genre:song.genre, coverUrl:song.coverUrl||null,
+        audioUrl:song.audioUrl, lyrics:song.lyrics||null,
+        downloadedAt:Date.now(), albumId:albumId, albumTitle:album.title
+      };
+      added++;
+    }
+  });
+  saveDownloads(currentUser.id, dl);
+  toast(`${added} faixas de "${album.title}" baixadas! ⬇️`,'success');
+  if(typeof currentView !== 'undefined' && currentView === 'downloads') renderDownloads();
+}
+
+// Playlists de download (offline) - separadas das playlists normais
+function getDownloadPlaylists(uid){
+  return JSON.parse(localStorage.getItem('mel_dlpl_'+uid)||'[]');
+}
+function saveDownloadPlaylists(uid, data){
+  localStorage.setItem('mel_dlpl_'+uid, JSON.stringify(data));
+  // Sincroniza com Firebase
+  if(_fbAvailable && _db){
+    _db.collection('user_dl_playlists').doc(uid).set({playlists: data})
+      .catch(e=>console.warn('[Meloria] DL Playlists sync falhou:', e));
+  }
+}
+async function syncDlPlaylistsFromFirebase(uid){
+  if(!_fbAvailable || !_db) return;
+  try {
+    const doc = await _db.collection('user_dl_playlists').doc(uid).get();
+    if(doc.exists){
+      const data = doc.data().playlists || [];
+      localStorage.setItem('mel_dlpl_'+uid, JSON.stringify(data));
+    }
+  } catch(e){
+    console.warn('[Meloria] Não foi possível carregar playlists offline:', e);
+  }
+}
+
+let currentDlPlaylistId = null;
+
+function renderDownloads(){
+  if(!currentUser) return;
+  const dl = getDownloads(currentUser.id);
+  const songs = Object.values(dl).sort((a,b)=>b.downloadedAt-a.downloadedAt);
+  
+  // Count
+  document.getElementById('downloadCount').textContent = songs.length + ' música' + (songs.length!==1?'s':'') + ' baixada' + (songs.length!==1?'s':'');
+  
+  // Playlists offline
+  renderDownloadPlaylists();
+  
+  // Músicas soltas
+  const grid = document.getElementById('downloadsGrid');
+  grid.innerHTML = '';
+  if(!songs.length){
+    grid.innerHTML = '<p style="color:var(--text-muted);font-size:14px;padding:16px">Nenhuma música na sua lista de downloads. Toque ⬇ em qualquer música para adicionar!</p>';
+    return;
+  }
+  songs.forEach((s,i) => {
+    const row = makeMusicRow(s, i, songs);
+    // Adicionar botão remover download
+    const rmBtn = document.createElement('button');
+    rmBtn.className = 'icon-btn';
+    rmBtn.title = 'Remover download';
+    rmBtn.textContent = '🗑';
+    rmBtn.style.color = 'var(--red)';
+    rmBtn.onclick = (e) => { e.stopPropagation(); downloadSong(s.id); };
+    row.querySelector('.music-row-actions').prepend(rmBtn);
+    grid.appendChild(row);
+  });
+}
+
+function renderDownloadPlaylists(){
+  if(!currentUser) return;
+  const playlists = getDownloadPlaylists(currentUser.id);
+  const grid = document.getElementById('downloadPlaylistsGrid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  if(!playlists.length){
+    grid.innerHTML = '<p style="color:var(--text-muted);font-size:14px;margin-bottom:12px">Nenhuma playlist offline. Crie uma!</p>';
+    return;
+  }
+  playlists.forEach(pl => {
+    const div = document.createElement('div');
+    div.className = 'music-card';
+    div.innerHTML = `
+      <div class="music-card-cover-placeholder">⬇️</div>
+      <div class="music-card-title">${pl.name}</div>
+      <div class="music-card-artist">${(pl.songs||[]).length} músicas</div>
+    `;
+    div.onclick = () => openDownloadPlaylist(pl.id);
+    grid.appendChild(div);
+  });
+}
+
+function openCreateDownloadPlaylist(){
+  const name = prompt('Nome da playlist offline:');
+  if(!name||!name.trim()) return;
+  const pls = getDownloadPlaylists(currentUser.id);
+  pls.push({id:'dlpl_'+Date.now(), name:name.trim(), songs:[], createdAt:Date.now()});
+  saveDownloadPlaylists(currentUser.id, pls);
+  renderDownloadPlaylists();
+  toast('Playlist criada! 🎵','success');
+}
+
+function openDownloadPlaylist(plId){
+  currentDlPlaylistId = plId;
+  const pls = getDownloadPlaylists(currentUser.id);
+  const pl = pls.find(p=>p.id===plId);
+  if(!pl) return;
+  
+  document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
+  document.getElementById('view-download-playlist-detail').classList.remove('hidden');
+  
+  const dl = getDownloads(currentUser.id);
+  const songs = (pl.songs||[]).map(id=>dl[id]).filter(Boolean);
+  
+  document.getElementById('dlPlaylistDetailHeader').innerHTML=`
+    <div class="playlist-cover-big">⬇️</div>
+    <div class="playlist-meta">
+      <p style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)">Playlist Offline</p>
+      <h1>${pl.name}</h1>
+      <p>${songs.length} música${songs.length!==1?'s':''}</p>
+    </div>
+  `;
+  
+  const list = document.getElementById('dlPlaylistDetailList');
+  list.innerHTML = '';
+  if(!songs.length){
+    list.innerHTML = '<p style="color:var(--text-muted);font-size:14px;padding:16px">Playlist vazia. Adicione músicas baixadas!</p>';
+  } else {
+    songs.forEach((s,i)=>list.appendChild(makeMusicRow(s,i,songs)));
+  }
+}
+
+function playAllDownloadPlaylist(){
+  if(!currentDlPlaylistId||!currentUser) return;
+  const pls = getDownloadPlaylists(currentUser.id);
+  const pl = pls.find(p=>p.id===currentDlPlaylistId);
+  if(!pl) return;
+  const dl = getDownloads(currentUser.id);
+  const songs = (pl.songs||[]).map(id=>dl[id]).filter(Boolean);
+  if(songs.length) playAll(songs);
+}
+
+function openAddToDownloadPlaylist(plId){
+  if(!currentUser) return;
+  const dl = getDownloads(currentUser.id);
+  const songs = Object.values(dl);
+  const pls = getDownloadPlaylists(currentUser.id);
+  const pl = pls.find(p=>p.id===plId);
+  if(!pl) return;
+  
+  const available = songs.filter(s=>!(pl.songs||[]).includes(s.id));
+  if(!available.length){ toast('Todas as músicas baixadas já estão nesta playlist','info'); return; }
+  
+  const list = document.getElementById('addToPlaylistList');
+  list.innerHTML = '';
+  available.forEach(s=>{
+    const item = document.createElement('div');
+    item.className = 'add-to-pl-item';
+    item.innerHTML = `<span>${s.title}</span><span style="color:var(--text-muted);font-size:12px">${s.artist}</span>`;
+    item.onclick = ()=>{
+      pl.songs = pl.songs||[];
+      pl.songs.push(s.id);
+      saveDownloadPlaylists(currentUser.id, pls);
+      toast(`"${s.title}" adicionada!`,'success');
+      document.getElementById('modalAddToPlaylist').classList.add('hidden');
+      openDownloadPlaylist(plId);
+    };
+    list.appendChild(item);
+  });
+  document.getElementById('modalAddToPlaylist').classList.remove('hidden');
+}
+
+function renameDownloadPlaylist(){
+  if(!currentUser||!currentDlPlaylistId) return;
+  const pls = getDownloadPlaylists(currentUser.id);
+  const pl = pls.find(p=>p.id===currentDlPlaylistId);
+  if(!pl) return;
+  const newName = prompt('Novo nome:', pl.name);
+  if(!newName||!newName.trim()) return;
+  pl.name = newName.trim();
+  saveDownloadPlaylists(currentUser.id, pls);
+  toast('Playlist renomeada!','success');
+  openDownloadPlaylist(currentDlPlaylistId);
+}
+
+function deleteDownloadPlaylist(){
+  if(!currentUser||!currentDlPlaylistId) return;
+  if(!confirm('Excluir esta playlist offline?')) return;
+  let pls = getDownloadPlaylists(currentUser.id);
+  pls = pls.filter(p=>p.id!==currentDlPlaylistId);
+  saveDownloadPlaylists(currentUser.id, pls);
+  toast('Playlist excluída','info');
+  navTo('downloads');
 }
 
 // =================== RENAME / DELETE PLAYLIST ===================
