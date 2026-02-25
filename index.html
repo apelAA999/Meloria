@@ -622,6 +622,7 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
 <div id="app-page" class="page">
   <!-- HEADER -->
   <header class="app-header">
+    <button id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
     <div class="header-logo">Meloria</div>
     <div class="search-bar">
       <span class="search-icon">🔍</span>
@@ -770,9 +771,13 @@ label{font-size:13px;color:var(--text-muted);display:block;margin-bottom:5px}
               <label>Nome da Música *</label>
               <input type="text" id="upTitle" placeholder="Nome da música">
             </div>
-            <div class="form-group">
-              <label>Artista/Autor *</label>
-              <input type="text" id="upArtist" placeholder="Nome do artista">
+            <div class="form-group" id="upArtistGroup">
+              <label>Artista/Autor</label>
+              <div id="upArtistDisplay" style="background:var(--dark);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:8px">
+                <span id="upArtistName" style="font-weight:600"></span>
+                <span id="upArtistBadge"></span>
+              </div>
+              <input type="hidden" id="upArtist">
             </div>
             <div class="form-group">
               <label>Gênero Musical *</label>
@@ -1560,6 +1565,7 @@ function navTo(view){
   if(view==='playlists') renderPlaylists();
   if(view==='albums') renderAlbums();
   if(view==='upload') setupUploadPage();
+  // Garante nome artístico no campo ao abrir upload
 }
 
 // =================== RENDER HOME ===================
@@ -1958,6 +1964,16 @@ function addToAnyPlaylist(songId){
 
 // =================== UPLOAD ===================
 function setupUploadPage(){
+  // Preenche automaticamente o nome artístico do criador
+  if(currentUser){
+    const name = currentUser.artisticName || currentUser.username;
+    const isVerified = currentUser.isVerifiedCreator;
+    document.getElementById('upArtist').value = name;
+    document.getElementById('upArtistName').textContent = name;
+    document.getElementById('upArtistBadge').innerHTML = isVerified 
+      ? '<span class="verified-badge">✓ Verificado</span>' 
+      : '';
+  }
   const isCreator=currentUser&&currentUser.type==='creator';
   if(!isCreator){
     document.getElementById('view-upload').innerHTML='<p style="color:var(--text-muted)">Apenas criadores podem enviar músicas. Recadastre-se como criador.</p>';
@@ -1983,10 +1999,10 @@ function addAlbumTrack(){
 function submitSong(){
   if(!currentUser||currentUser.type!=='creator'){ toast('Apenas criadores podem enviar músicas','error'); return; }
   const title=document.getElementById('upTitle').value.trim();
-  const artist=document.getElementById('upArtist').value.trim();
+  const artist=currentUser.artisticName || currentUser.username; // Nome artístico fixo
   const genre=document.getElementById('upGenre').value;
   const lyrics=document.getElementById('upLyrics').value.trim();
-  if(!title||!artist||!genre){ toast('Preencha os campos obrigatórios','error'); return; }
+  if(!title||!genre){ toast('Preencha os campos obrigatórios','error'); return; }
   
   const coverFile=document.getElementById('upCover').files[0];
   const audioFile=document.getElementById('upAudio').files[0];
